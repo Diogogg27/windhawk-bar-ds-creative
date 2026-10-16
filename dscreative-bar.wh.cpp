@@ -8,7 +8,7 @@
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @include         explorer.exe
 // @compilerOptions -lcomctl32 -lshlwapi -lgdiplus -ldwmapi -lole32 -lshell32 -ladvapi32
-// ==WindhawkMod==
+// ==/WindhawkMod==
 
 // ==WindhawkModReadme==
 // Floating Launcher Bar
@@ -40,7 +40,7 @@
 // Instalação
 // ----------
 // Windhawk > Mods > Create new mod > colar este arquivo > Compile.
-// ==WindhawkModReadme==
+// ==/WindhawkModReadme==
 
 // ==WindhawkModSettings==
 // - Textura:
@@ -93,7 +93,7 @@
 //     $description: Pasta com os PNG gerados pelo extrair-icones.ps1
 //     $type: string
 //     $default: "%USERPROFILE%\\windhawk-bar-ds-creative\\icons"
-// ==WindhawkModSettings==
+// ==/WindhawkModSettings==
 
 #include <windows.h>
 #include <shellapi.h>
