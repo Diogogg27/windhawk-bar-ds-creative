@@ -1,0 +1,11 @@
+# icones extraidos localmente - nunca publicar (marcas de terceiros)
+icons/
+
+# saidas de build
+*.o
+*.obj
+*.exe
+
+# temporarios
+*.tmp
+~*
