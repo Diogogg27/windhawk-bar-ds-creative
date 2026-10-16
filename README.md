@@ -103,8 +103,9 @@ repositório não tem build. As funções `pointOnRoundRect`, `buildCity`, `draw
 4. O Windhawk compila com o MinGW embutido e instala
 5. A barra aparece na hora — não precisa reiniciar nada
 
-> **Ainda não publicado:** o arquivo `.wh.cpp` está em desenvolvimento.
-> A especificação completa está em [`SPEC.md`](SPEC.md).
+> O arquivo [`dscreative-bar.wh.cpp`](dscreative-bar.wh.cpp) é o mod completo.
+> Compila sem nenhum erro e sem nenhum aviso com clang 20 / `-Wall -Wextra`.
+> A especificação que o originou está em [`SPEC.md`](SPEC.md).
 
 ---
 
