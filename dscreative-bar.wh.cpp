@@ -7,7 +7,7 @@
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @include         explorer.exe
-// @compilerOptions -lcomctl32 -lshlwapi -lgdiplus -ldwmapi -lole32 -lshell32 -ladvapi32
+// @compilerOptions -lcomctl32 -lshlwapi -lgdiplus -lgdi32 -ldwmapi -lole32 -lshell32 -ladvapi32
 // ==/WindhawkMod==
 
 // ==WindhawkModReadme==
