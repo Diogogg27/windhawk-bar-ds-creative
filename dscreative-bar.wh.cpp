@@ -1441,9 +1441,16 @@ static DWORD WINAPI ThreadPrincipal(LPVOID) {
 // Ciclo de vida do mod
 // ---------------------------------------------------------------------------
 
-// O Windhawk localiza estes três por nome via GetProcAddress: precisam ser
-// extern "C" (sem mangling) e explicitamente exportados.
-extern "C" __declspec(dllexport) BOOL Wh_ModInit() {
+// O motor do Windhawk localiza estas funções pelo nome MANGLED do C++, não pelo
+// nome puro. Ele procura exatamente:
+//     _Z10Wh_ModInitv  _Z12Wh_ModUninitv  _Z21Wh_ModSettingsChangedv
+//
+// Por isso NÃO podem ser `extern "C"` — com extern "C" o compilador exporta
+// "Wh_ModInit" sem mangled, o motor não encontra, e a DLL é carregada mas nunca
+// inicializada (a barra simplesmente não aparece).
+//
+// Basta `__declspec(dllexport)`: isso garante a exportação e mantém o mangling.
+__declspec(dllexport) BOOL Wh_ModInit() {
     Gdiplus::GdiplusStartupInput gsi;
     if (Gdiplus::GdiplusStartup(&g_gdiplusToken, &gsi, nullptr) != Gdiplus::Ok)
         g_gdiplusToken = 0;
@@ -1458,7 +1465,7 @@ extern "C" __declspec(dllexport) BOOL Wh_ModInit() {
     return TRUE;
 }
 
-extern "C" __declspec(dllexport) void Wh_ModUninit() {
+__declspec(dllexport) void Wh_ModUninit() {
     g_running = false;
 
     if (g_threadId) PostThreadMessageW(g_threadId, WM_QUIT, 0, 0);
@@ -1480,7 +1487,7 @@ extern "C" __declspec(dllexport) void Wh_ModUninit() {
     }
 }
 
-extern "C" __declspec(dllexport) void Wh_ModSettingsChanged() {
+__declspec(dllexport) void Wh_ModSettingsChanged() {
     if (g_threadId) PostThreadMessageW(g_threadId, WM_RECARGAR, 0, 0);
     else { CarregarConfig(); CarregarIcones(); MonteBarra(); MontePainel(); }
 }
