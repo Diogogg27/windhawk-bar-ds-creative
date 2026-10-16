@@ -936,8 +936,8 @@ static void DesenharIcone(Gdiplus::Graphics& g, const RECT& rc, const std::wstri
     int lado = (std::min)(w, h) - 6;
     if (lado < 4) return;
 
-    RectF dest((REAL)(rc.left + (w - lado) / 2),
-               (REAL)(rc.top + (h - lado) / 2),
+    RectF dest((REAL)(rc.left + (w - lado) / 2.0f),
+               (REAL)(rc.top + (h - lado) / 2.0f),
                (REAL)lado, (REAL)lado);
     g.DrawImage(it->second, dest);
 }
@@ -1094,7 +1094,7 @@ static void PintarPainel(Gdiplus::Graphics& g, int w, int h) {
         DesenharIcone(g, b.rc, b.iconKey);
 
         if (i < _countof(rotulos)) {
-            REAL cx = (REAL)((b.rc.left + b.rc.right) / 2);
+            REAL cx = (REAL)((b.rc.left + b.rc.right) / 2.0f);
             REAL top = (REAL)b.rc.bottom + 4;
             g.DrawString(rotulos[i], -1, &rot, RectF(cx - 40, top, 80, (REAL)PANEL_LABEL),
                          &sf, &corRot);
