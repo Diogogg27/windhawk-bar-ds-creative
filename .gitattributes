@@ -1,0 +1,8 @@
+# O Windhawk só reconhece o bloco ==WindhawkMod== em arquivos com fim de
+# linha Windows. Sem isso, quem clonar o repositório com autocrlf desligado
+# recebe LF e o Windhawk falha com "Couldn't find a metadata block".
+*.wh.cpp text eol=crlf
+*.ps1    text eol=crlf
+*.md     text eol=lf
+*.html   text eol=lf
+*.png    binary
