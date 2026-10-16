@@ -1,6 +1,6 @@
 // ==WindhawkMod==
 // @id              dscreative-bar
-// @name            Barra DS Creative
+// @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
 // @version         1.0.0
 // @author          diogo
@@ -11,8 +11,8 @@
 // ==WindhawkMod==
 
 // ==WindhawkModReadme==
-// Barra DS Creative
-// =================
+// Floating Launcher Bar
+// =====================
 //
 // Uma barra de lançamento horizontal, minimalista e de flutuação livre que
 // vive sobre a área de trabalho do Windows 11.
@@ -549,7 +549,7 @@ static void Desligar() {
                    L"Desligar o computador em 30 segundos?"))
         return;
     HabilitarShutdown();
-    InitiateSystemShutdownExW(nullptr, const_cast<LPWSTR>(L"A Barra DS Creative vai desligar o computador."),
+    InitiateSystemShutdownExW(nullptr, const_cast<LPWSTR>(L"O computador vai desligar em 30 segundos."),
                               30, TRUE, FALSE,
                               SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_OTHER);
 }
@@ -1407,7 +1407,7 @@ static DWORD WINAPI ThreadPrincipal(LPVOID) {
     RegisterClassExW(&wc);
 
     g_hwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
-                             kClasseBarra, L"Barra DS Creative", WS_POPUP,
+                             kClasseBarra, L"Floating Launcher Bar", WS_POPUP,
                              0, 0, g_barW, g_barH,
                              nullptr, nullptr, g_hInst, nullptr);
     if (!g_hwnd) return 1;
