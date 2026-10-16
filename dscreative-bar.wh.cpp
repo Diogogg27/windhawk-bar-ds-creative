@@ -478,16 +478,15 @@ static void AbrirFigma() {
 }
 
 static void AbrirWhatsApp() {
-    // alias de ativação da Store — não quebra a cada atualização
-    std::wstring alias = Expandir(L"%LOCALAPPDATA%\\Microsoft\\WindowsApps\\WhatsApp.exe");
-    if (GetFileAttributesW(alias.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        AbrirShell(alias);
-        return;
-    }
-    std::wstring exe = MaisRecente(Expandir(L"%ProgramFiles%\\WindowsApps"),
-                                   L"5319275A.WhatsAppDesktop_*",
-                                   L"WhatsApp.Root.exe");
-    AbrirShell(exe);
+    // App User Model ID: o Windows lança o app da Store por ele, sem depender
+    // de caminho de arquivo. A pasta WindowsApps é ilegível para usuário comum,
+    // então procurar o .exe por varredura falharia — e o alias da Store nem
+    // sempre existe.
+    const wchar_t* aumid = L"5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App";
+
+    std::wstring args = L"shell:AppsFolder\\";
+    args += aumid;
+    AbrirShell(Expandir(L"%WINDIR%\\explorer.exe"), args);
 }
 
 static void AbrirOpenCode() {
