@@ -71,6 +71,30 @@ em cima, para nunca perder legibilidade.
 
 ---
 
+## Efeito Starfield
+
+A barra fica **limpa no repouso**. No hover sobem juntos, em 600 ms:
+
+- uma **luz** percorrendo a borda por comprimento de arco — 1 volta a cada 5 s,
+  anti-horário, velocidade constante nas retas e nas curvas
+- uma **grade de pixels** cintilando dentro da barra (canvas aditivo)
+- um **halo interno** desfocado acendendo pela borda
+
+Tudo no ciano do preset: `#00EFFF` luz · `#83FFF5` pixels · `#00DFFF` halo.
+
+<img src="imagens/print-starfield.png" alt="Efeito Starfield no hover" width="760">
+
+**Demo avulso, sem ícones:** [`starfield.html`](starfield.html) — abra direto no
+navegador e passe o mouse.
+
+O efeito é o
+[Starfield Button](https://www.originkit.dev/components/starfield-button)
+da **Originkit**, portado de React/Framer Motion para JavaScript puro — o
+repositório não tem build. As funções `pointOnRoundRect`, `buildCity`, `draw` e
+`placeLights` são as da fonte original, não uma reescrita.
+
+---
+
 ## Instalação
 
 1. Instale o [Windhawk](https://windhawk.org) se ainda não tiver

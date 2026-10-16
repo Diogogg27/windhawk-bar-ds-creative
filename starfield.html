@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starfield — efeito (Barra DS Creative)</title>
+<style>
+  :root {
+    --luz:     #00EFFF;   /* stroke.color  — luz que orbita a borda */
+    --pixel:   #83FFF5;   /* pixel.color   — grade de pixels        */
+    --halo:    #00DFFF;   /* glow.color    — halo interno           */
+    --fundo:   #0A0A0A;   /* colors.fill                            */
+    --texto:   #FFFFFF;   /* colors.textColor                       */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 56px 20px 72px;
+    background: #06090d;
+    color: #d7e3ea;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+
+  .caixa { max-width: 760px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 600; color: #eef6fa; margin: 0 0 6px; }
+  .sub { color: rgba(255,255,255,.5); font-size: 14px; margin: 0 0 40px; }
+
+  /* ---------- palco: sem ícones, só o efeito ---------- */
+  .palco {
+    background: linear-gradient(150deg,#28323f 0%,#0c1218 100%);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 76px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .aviso {
+    font-size: 12px;
+    color: rgba(255,255,255,.42);
+    text-align: center;
+    margin-top: 14px;
+    letter-spacing: .04em;
+  }
+
+  /* =======================================================
+     Starfield — só o efeito.
+     O alvo é uma barra arredondada vazia, como a da ferramenta.
+     ======================================================= */
+  .alvo {
+    position: relative;
+    overflow: visible;
+    width: min(560px, 100%);
+    height: 54px;
+    background: rgba(10,13,18,.55);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 12px;
+    backdrop-filter: blur(16px);
+    cursor: default;
+  }
+
+  .alvo > *:not(.star-band):not(.star-canvas):not(.star-glow) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* anel por onde a luz desliza — border-box menos content-box */
+  .star-band {
+    position: absolute;
+    box-sizing: border-box;
+    z-index: 0;
+    pointer-events: none;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: border-box, content-box;
+    mask-composite: exclude;
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: border-box, content-box;
+    -webkit-mask-composite: xor;
+  }
+
+  .star-light {
+    position: absolute;
+    top: 0; left: 0;
+    width: 96px; height: 96px;
+    margin: -48px 0 0 -48px;
+    opacity: 0;                 /* só aparece no hover */
+    pointer-events: none;
+    will-change: transform;
+    background: radial-gradient(circle,
+      var(--luz) 0%, var(--luz) 30%, rgba(0,239,255,0) 72%);
+  }
+
+  .star-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .star-glow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border: 3px solid var(--halo);
+    filter: blur(8px);
+    opacity: 0;                 /* só aparece no hover */
+    pointer-events: none;
+    mask-image: linear-gradient(#000 0 0);
+    mask-clip: border-box;
+    -webkit-mask-image: linear-gradient(#000 0 0);
+    -webkit-mask-clip: border-box;
+  }
+
+  /* ---------- rodapé ---------- */
+  .grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px,1fr));
+    gap: 14px;
+    margin-top: 40px;
+  }
+  .cartao {
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .cartao h3 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.45);
+  }
+  .cartao p { margin: 0; font-size: 13px; color: rgba(255,255,255,.72); }
+
+  .amostras { display: flex; gap: 8px; align-items: center; }
+  .amostra { display: flex; align-items: center; gap: 7px; font-size: 12px; color: rgba(255,255,255,.7); }
+  .fica { width: 15px; height: 15px; border-radius: 4px; border: 1px solid rgba(255,255,255,.2); }
+
+  a { color: var(--luz); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .creditos {
+    margin-top: 34px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    font-size: 12.5px;
+    color: rgba(255,255,255,.45);
+  }
+</style>
+</head>
+<body>
+
+<div class="caixa">
+
+  <h1>Starfield</h1>
+  <p class="sub">
+    Luz percorrendo a borda por comprimento de arco, grade de pixels cintilando
+    na face e halo interno — tudo acendendo no hover. Sem ícones e sem texto no alvo.
+  </p>
+
+  <div class="palco">
+    <div class="alvo" id="alvo"></div>
+  </div>
+  <p class="aviso">passe o mouse sobre a barra</p>
+
+  <div class="grade">
+    <div class="cartao">
+      <h3>Comportamento</h3>
+      <p>Repouso limpo. No hover, em 600&nbsp;ms sobem luz, grade e halo juntos.</p>
+    </div>
+    <div class="cartao">
+      <h3>Órbita</h3>
+      <p>1 volta a cada 5&nbsp;s, anti-horário, velocidade constante nas retas e nas curvas.</p>
+    </div>
+    <div class="cartao">
+      <h3>Respeita o sistema</h3>
+      <p>Com <i>reduzir movimento</i> ligado, nada anima — só o estado final.</p>
+    </div>
+  </div>
+
+  <div class="grade">
+    <div class="cartao" style="grid-column:1/-1">
+      <h3>Paleta do preset</h3>
+      <div class="amostras">
+        <span class="amostra"><span class="fica" style="background:#00EFFF"></span>#00EFFF&nbsp;luz</span>
+        <span class="amostra"><span class="fica" style="background:#83FFF5"></span>#83FFF5&nbsp;pixels</span>
+        <span class="amostra"><span class="fica" style="background:#00DFFF"></span>#00DFFF&nbsp;halo</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="creditos">
+    Efeito <a href="https://www.originkit.dev/components/starfield-button" target="_blank" rel="noopener noreferrer">Starfield Button</a>
+    da <b>Originkit</b>, portado de React/Framer Motion para JavaScript puro (o repositório não usa build).
+    As funções <code>pointOnRoundRect</code>, <code>buildCity</code>, <code>draw</code> e
+    <code>placeLights</code> são as da fonte original.
+  </p>
+
+</div>
+
+<!-- ============================================================
+     Starfield Button — Originkit
+     https://www.originkit.dev/components/starfield-button
+     Port direto da fonte original para JS puro (o repo não usa build).
+     Mesmas funções: pointOnRoundRect, buildCity, draw, placeLights.
+     Só o efeito — sem label e sem ícone.
+     ============================================================ -->
+<script>
+(function () {
+  "use strict";
+
+  var alvo = document.getElementById("alvo");
+  if (!alvo) return;
+
+  /* ---------------- preset __originkitPresetProps ---------------- */
+  var LIGHT_COLOR   = "#00EFFF";          // stroke.color
+  var GLOW_COLOR    = "#00DFFF";          // glow.color
+  var PIXEL_COLOR   = "#83FFF5";          // pixel.color
+
+  var LIGHT_COUNT   = 1;                  // stroke.count
+  var LIGHT_PX      = 96;                 // stroke.size
+  var LIGHT_THICK   = 2;                  // stroke.thickness
+  var SPEED_PCT     = 50;                 // stroke.speed
+  var DIRECTION     = "ccw";              // stroke.direction
+  var MOVEMENT      = "continuous";       // stroke.movement
+
+  var PIXEL_SIZE    = 4;                  // pixel.size
+  var PIXEL_DENSITY = 50;                 // pixel.density
+  var PIXEL_BRIGHT  = 100;                // pixel.brightness
+
+  var GLOW_PX       = 16;                 // glow.size
+  var GLOW_ALPHA    = 100;                // glow.opacity
+
+  var TRANSITION_MS = 600;                // transition.duration
+  var EASE          = [0.44, 0, 0.56, 1]; // transition.ease
+
+  /* geometria da borda (border-width é 1px, como no componente) */
+  var BAND_MAX   = 1;
+  var RING_INSET = BAND_MAX / 2 - LIGHT_THICK / 2;   // = -0.5
+  var SECONDS_AT_SPEED_1 = 10;
+
+  var reducedMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------------- helpers portados ---------------- */
+  var clamp = function (v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  };
+
+  var rnd = function (i, salt) {
+    var x = Math.sin((i + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
+  /* cubica-bezier com o mesmo ease do preset */
+  function cubicBezier(x1, y1, x2, y2) {
+    function A(a1, a2) { return 1 - 3 * a2 + 3 * a1; }
+    function B(a1, a2) { return 3 * a2 - 6 * a1; }
+    function C(a1) { return 3 * a1; }
+    function calc(t, a1, a2) { return ((A(a1, a2) * t + B(a1, a2)) * t + C(a1)) * t; }
+    function slope(t, a1, a2) { return 3 * A(a1, a2) * t * t + 2 * B(a1, a2) * t + C(a1); }
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var t = x;
+      for (var i = 0; i < 8; i++) {
+        var xs = calc(t, x1, x2) - x;
+        if (Math.abs(xs) < 1e-6) break;
+        var d = slope(t, x1, x2);
+        if (Math.abs(d) < 1e-6) break;
+        t -= xs / d;
+      }
+      return calc(t, y1, y2);
+    };
+  }
+  var easeOut = cubicBezier(EASE[0], EASE[1], EASE[2], EASE[3]);
+
+  /* percorre um retangulo de cantos arredondados por comprimento de arco
+     [fonte original: pointOnRoundRect] */
+  function pointOnRoundRect(t, w, h, r) {
+    var rr = Math.max(0, Math.min(r, w / 2, h / 2));
+    var sx = Math.max(0, w - 2 * rr);
+    var sy = Math.max(0, h - 2 * rr);
+    var arc = (Math.PI / 2) * rr;
+    var total = 2 * sx + 2 * sy + 4 * arc;
+    if (total <= 0) return { x: w / 2, y: h / 2 };
+
+    var d = (((t % 1) + 1) % 1) * total + sx / 2;
+    d %= total;
+
+    if (d < sx) return { x: rr + d, y: 0 };
+    d -= sx;
+    if (d < arc) {
+      var a1 = d / rr;
+      return { x: w - rr + rr * Math.sin(a1), y: rr - rr * Math.cos(a1) };
+    }
+    d -= arc;
+    if (d < sy) return { x: w, y: rr + d };
+    d -= sy;
+    if (d < arc) {
+      var a2 = d / rr;
+      return { x: w - rr + rr * Math.cos(a2), y: h - rr + rr * Math.sin(a2) };
+    }
+    d -= arc;
+    if (d < sx) return { x: w - rr - d, y: h };
+    d -= sx;
+    if (d < arc) {
+      var a3 = d / rr;
+      return { x: rr - rr * Math.sin(a3), y: h - rr + rr * Math.cos(a3) };
+    }
+    d -= arc;
+    if (d < sy) return { x: 0, y: h - rr - d };
+    d -= sy;
+    var a4 = d / rr;
+    return { x: rr - rr * Math.cos(a4), y: rr - rr * Math.sin(a4) };
+  }
+
+  /* ---------------- markup do efeito ---------------- */
+  var band = document.createElement("div");
+  band.className = "star-band";
+  var light = document.createElement("div");
+  light.className = "star-light";
+  light.style.opacity = "0";          /* só aparece no hover */
+  band.appendChild(light);
+
+  var canvas = document.createElement("canvas");
+  canvas.className = "star-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+
+  var glow = document.createElement("div");
+  glow.className = "star-glow";
+  glow.setAttribute("aria-hidden", "true");
+
+  alvo.appendChild(band);
+  alvo.appendChild(canvas);
+  alvo.appendChild(glow);
+
+  var ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  /* ---------------- estado ---------------- */
+  var geom = { w: 0, h: 0, radius: 0 };
+  var size = { w: 1, h: 1, dpr: 1 };
+  var city = { cols: 0, rows: 0, dens: -1, cells: [] };
+  var reveal = 0;
+  var revealRaf = null;
+
+  var speed = 2 * (clamp(SPEED_PCT, 0, 100) / 50);
+  var turnsPerSec = Math.max(0, speed) / SECONDS_AT_SPEED_1;
+
+  function readRadius() {
+    var cs = window.getComputedStyle(alvo);
+    var r = parseFloat(cs.borderTopLeftRadius);
+    return isFinite(r) && r > 0 ? r : 12;
+  }
+
+  function applyGeometry() {
+    var w = alvo.offsetWidth;
+    var h = alvo.offsetHeight;
+    if (!w || !h) return;
+    var radius = readRadius();
+    geom = { w: w, h: h, radius: radius };
+
+    band.style.top = RING_INSET + "px";
+    band.style.right = RING_INSET + "px";
+    band.style.bottom = RING_INSET + "px";
+    band.style.left = RING_INSET + "px";
+    band.style.padding = LIGHT_THICK + "px";
+    band.style.borderRadius = Math.max(0, radius - RING_INSET) + "px";
+
+    glow.style.borderRadius = radius + "px";
+    canvas.style.borderRadius = radius + "px";
+
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    size = { w: w, h: h, dpr: dpr };
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+
+    placeLights(performance.now() / 1000);
+    draw();
+  }
+
+  /* ---------------- grade de pixels [fonte original: buildCity/draw] ------- */
+  function buildCity(w, h, cell) {
+    var c = Math.max(4, Math.round(cell));
+    var cols = Math.max(1, Math.floor(w / c));
+    var rows = Math.max(1, Math.floor(h / c));
+    var dens = clamp(PIXEL_DENSITY / 100, 0, 1);
+
+    if (cols === city.cols && rows === city.rows && dens === city.dens && city.cells.length) return;
+
+    var offX = (w - cols * c) / 2;
+    var offY = (h - rows * c) / 2;
+    var cells = [];
+    for (var r = 0; r < rows; r++) {
+      for (var col = 0; col < cols; col++) {
+        var i = r * cols + col;
+        var lit = rnd(i, 1) < dens;
+        cells.push({
+          cx: offX + col * c + c / 2,
+          cy: offY + r * c + c / 2,
+          base: lit ? 0.5 + rnd(i, 2) * 0.5 : 0.05 + rnd(i, 3) * 0.18,
+          speed: 0.6 + rnd(i, 4) * 2.4,
+          phase: rnd(i, 5) * Math.PI * 2
+        });
+      }
+    }
+    city = { cols: cols, rows: rows, dens: dens, cells: cells };
+  }
+
+  function draw() {
+    var w = size.w, h = size.h, dpr = size.dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var rv = reveal;
+    if (rv < 0.001) return;
+
+    buildCity(w, h, PIXEL_SIZE);
+    var cells = city.cells;
+    var c = Math.max(4, Math.round(PIXEL_SIZE));
+    var dot = Math.max(1, Math.round(c * 0.62));
+    var off = dot / 2;
+    var t = performance.now() / 1000;
+    var cx = w / 2, cy = h / 2;
+    var maxD = Math.hypot(cx, cy) || 1;
+    var lightMul = Math.max(0, PIXEL_BRIGHT) / 100;
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = PIXEL_COLOR;
+    for (var k = 0; k < cells.length; k++) {
+      var p = cells[k];
+      var tw = 0.55 + 0.45 * Math.sin(t * p.speed + p.phase);
+      var d = Math.hypot(p.cx - cx, p.cy - cy) / maxD;
+      var centerBias = 0.55 + 0.45 * (1 - d);
+      var a = p.base * tw * centerBias * rv * lightMul;
+      if (a <= 0.002) continue;
+      if (a > 1) a = 1;
+      ctx.globalAlpha = a;
+      ctx.fillRect(p.cx - off, p.cy - off, dot, dot);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  /* ---------------- luz orbitando a borda [fonte original: placeLights] ----- */
+  function placeLights(elapsedSec) {
+    var w = geom.w, h = geom.h, radius = geom.radius;
+    if (!w || !h) return;
+
+    var half = BAND_MAX / 2;
+    var pw = Math.max(0, w - BAND_MAX);
+    var ph = Math.max(0, h - BAND_MAX);
+    var pr = Math.max(0, radius - half);
+    var dir = DIRECTION === "cw" ? 1 : -1;
+    var base = elapsedSec * turnsPerSec * dir;
+
+    for (var i = 0; i < LIGHT_COUNT; i++) {
+      var t = base + i / LIGHT_COUNT;
+      t = ((t % 1) + 1) % 1;
+
+      var p = pointOnRoundRect(t, pw, ph, pr);
+      light.style.transform = "translate3d(" +
+        (p.x + half - RING_INSET) + "px," +
+        (p.y + half - RING_INSET) + "px,0)";
+    }
+  }
+
+  /* ---------------- tween do reveal (0 → 1 no hover) ---------------- */
+  function animateReveal(to) {
+    if (revealRaf) { cancelAnimationFrame(revealRaf); revealRaf = null; }
+
+    if (reducedMotion) {
+      reveal = to;
+      glow.style.opacity = String(reveal * (GLOW_ALPHA / 100));
+      light.style.opacity = String(reveal);
+      draw();
+      return;
+    }
+
+    var from = reveal;
+    var t0 = performance.now();
+
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / TRANSITION_MS);
+      reveal = from + (to - from) * easeOut(p);
+      glow.style.opacity = String(reveal * (GLOW_ALPHA / 100));
+      light.style.opacity = String(reveal);
+      if (p < 1) revealRaf = requestAnimationFrame(step);
+      else revealRaf = null;
+    })(performance.now());
+  }
+
+  /* ---------------- wiring ---------------- */
+  applyGeometry();
+
+  new ResizeObserver(function () { applyGeometry(); }).observe(alvo);
+
+  if (reducedMotion) {
+    reveal = 0;
+    glow.style.opacity = "0";
+    light.style.opacity = "0";
+    draw();
+    placeLights(performance.now() / 1000);
+  } else {
+    (function tick() {
+      draw();
+      placeLights(performance.now() / 1000);
+      requestAnimationFrame(tick);
+    })();
+  }
+
+  alvo.addEventListener("pointerenter", function () { animateReveal(1); });
+  alvo.addEventListener("pointerleave", function () { animateReveal(0); });
+})();
+</script>
+
+</body>
+</html>
