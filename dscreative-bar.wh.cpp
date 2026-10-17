@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.0.6
+// @version         1.0.7
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -531,11 +531,23 @@ static void Marcar(const wchar_t* acao) {
 // A confirmação nasce no centro do monitor, longe da barra — quem olha para a
 // barra acha que o botão não fez nada. Um gancho WH_CBT reposiciona o diálogo
 // para junto da barra assim que ele é ativado.
+//
+// MEDIDO: ao FECHAR a caixa de diálogo o Windows ativa o dono dela — a própria
+// barra — e o gancho, que só olhava o handle recebido sem conferir o que era,
+// reposicionava a BARRA em cima dela mesma: y = bottom + 8 = +52px por clique,
+// descendo para sempre. Agora o gancho só age se:
+//   1. a janela NÃO for a barra nem o painel;
+//   2. a janela for uma caixa de diálogo de verdade (classe #32770);
+//   3. ainda não tiver reposicionado nada nesta confirmação.
 static HHOOK g_hookDlg = nullptr;
+static bool  g_dlgJaPosicionado = false;
 
 static LRESULT CALLBACK HookDialogo(int code, WPARAM wp, LPARAM lp) {
-    if (code == HCBT_ACTIVATE && g_hwnd) {
+    if (code == HCBT_ACTIVATE && g_hwnd && !g_dlgJaPosicionado) {
         HWND dlg = (HWND)wp;
+        wchar_t cls[16]{};
+        GetClassNameW(dlg, cls, 16);
+        if (dlg != g_hwnd && dlg != g_panel && wcscmp(cls, L"#32770") == 0) {
         RECT rd{}, rb{};
         if (GetWindowRect(dlg, &rd) && GetWindowRect(g_hwnd, &rb)) {
             // Área útil do monitor ONDE A BARRA ESTÁ. Medido: usando a tela
@@ -563,6 +575,8 @@ static LRESULT CALLBACK HookDialogo(int code, WPARAM wp, LPARAM lp) {
 
             SetWindowPos(dlg, HWND_TOPMOST, x, y, 0, 0,
                          SWP_NOSIZE | SWP_NOACTIVATE);
+            g_dlgJaPosicionado = true;   // uma vez por confirmação, basta
+        }
         }
     }
     return CallNextHookEx(g_hookDlg, code, wp, lp);
@@ -573,6 +587,7 @@ static LRESULT CALLBACK HookDialogo(int code, WPARAM wp, LPARAM lp) {
 // que não ativa a janela filha.
 static bool Confirmar(const wchar_t* titulo, const wchar_t* texto) {
     Marcar(titulo);
+    g_dlgJaPosicionado = false;
     g_hookDlg = SetWindowsHookExW(WH_CBT, HookDialogo, nullptr,
                                   GetCurrentThreadId());
     int r = MessageBoxW(g_hwnd, texto, titulo,
