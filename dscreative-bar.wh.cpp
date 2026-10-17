@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
-// @version         1.0.0
+// @version         1.0.1
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -43,56 +43,41 @@
 // ==/WindhawkModReadme==
 
 // ==WindhawkModSettings==
-// - Textura:
-//     $name: Textura de fundo
-//     $description: Aplicada ao painel que surge no hover
-//     $type: choice
-//     $options:
-//       Nenhuma: 0
-//       Vidro fosco: 1
-//       Fibra de carbono: 2
-//       Metal escovado: 3
-//       Perfurado: 4
-//       Linho: 5
-//       Papel: 6
-//       Diagonais: 7
-//       Malha: 8
-//       Granulado: 9
-//     $default: 0
-// - Opacidade:
-//     $name: Opacidade da barra
-//     $description: 10 = quase invisível, 100 = totalmente opaco
-//     $type: int
-//     $min: 10
-//     $max: 100
-//     $default: 72
-// - OpacidadeHover:
-//     $name: Forçar 100% ao passar o mouse
-//     $description: Ignora o slider enquanto o mouse está em cima
-//     $type: bool
-//     $default: true
-// - EfeitoStarfield:
-//     $name: Efeito Starfield no hover
-//     $description: Luz na borda, grade de pixels e halo
-//     $type: bool
-//     $default: true
-// - CorDivisoria:
-//     $name: Cor da linha divisória
-//     $type: color
-//     $default: "#FFFFFF"
-// - MostrarSempreVisivel:
-//     $name: Mostrar em todas as áreas de trabalho
-//     $type: bool
-//     $default: true
-// - PastaOpenCode:
-//     $name: Pasta de trabalho do OpenCode
-//     $type: string
-//     $default: "H:\\DS CREATIVE"
-// - PastaIcones:
-//     $name: Pasta de ícones
-//     $description: Pasta com os PNG gerados pelo extrair-icones.ps1
-//     $type: string
-//     $default: "%USERPROFILE%\\windhawk-bar-ds-creative\\icons"
+/*
+- Textura: 0
+  $name: Textura de fundo
+  $description: Textura aplicada ao fundo da barra.
+  $options:
+  - 0: Nenhuma
+  - 1: Vidro fosco
+  - 2: Fibra de carbono
+  - 3: Metal escovado
+  - 4: Perfurado
+  - 5: Linho
+  - 6: Papel
+  - 7: Diagonais
+  - 8: Malha
+  - 9: Granulado
+- Opacidade: 72
+  $name: Opacidade do fundo
+  $description: 10 = quase invisível, 100 = totalmente opaco.
+- OpacidadeHover: true
+  $name: Forçar 100% ao passar o mouse
+  $description: Ignora a opacidade enquanto o mouse está em cima.
+- EfeitoStarfield: true
+  $name: Efeito Starfield no hover
+  $description: Grade de pixels, luz orbitando a borda e halo ciano.
+- CorDivisoria: "#FFFFFF"
+  $name: Cor da linha divisória
+- MostrarSempreVisivel: true
+  $name: Mostrar em todas as áreas de trabalho
+- PastaOpenCode: ""
+  $name: Pasta de trabalho do OpenCode
+  $description: Deixe em branco para usar H:\DS CREATIVE.
+- PastaIcones: ""
+  $name: Pasta de ícones
+  $description: Deixe em branco para usar a pasta padrão de ícones.
+*/
 // ==/WindhawkModSettings==
 
 #include <windows.h>
@@ -253,12 +238,14 @@ static bool LerPosicao(int& x, int& y) {
 static void CarregarConfig() {
     // nesta versão do Windhawk não existe Wh_GetBoolSetting:
     // bools voltam como int via Wh_GetIntSetting
-    g_textura    = Wh_GetIntSetting(L"Textura");
+    // defaults explícitos: se o bloco de settings não for reconhecido, o
+    // mod continua com o comportamento correto em vez de virar tudo zero
+    g_textura    = Wh_GetIntSetting(L"Textura", 0);
     g_opacidade  = Clamp(Wh_GetIntSetting(L"Opacidade", 72), 10, 100);
-    g_forcar100  = Wh_GetIntSetting(L"OpacidadeHover") != 0;
-    g_starfield  = Wh_GetIntSetting(L"EfeitoStarfield") != 0;
+    g_forcar100  = Wh_GetIntSetting(L"OpacidadeHover", 1) != 0;
+    g_starfield  = Wh_GetIntSetting(L"EfeitoStarfield", 1) != 0;
     g_corDiv     = (COLORREF)Wh_GetIntSetting(L"CorDivisoria", RGB(255, 255, 255));
-    g_todasAreas = Wh_GetIntSetting(L"MostrarSempreVisivel") != 0;
+    g_todasAreas = Wh_GetIntSetting(L"MostrarSempreVisivel", 1) != 0;
 
     PCWSTR s = Wh_GetStringSetting(L"PastaOpenCode");
     g_pastaOpenCode = (s && *s) ? s : L"H:\\DS CREATIVE";
