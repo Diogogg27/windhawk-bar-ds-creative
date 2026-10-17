@@ -1,8 +1,8 @@
 // ==WindhawkMod==
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
-// @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
-// @version         1.0.5
+// @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais e controle de opacidade.
+// @version         1.0.6
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -20,7 +20,7 @@
 // O que ela faz
 // -------------
 // - Fundo invisível por padrão: o painel aparece apenas quando o mouse passa
-// - Efeito Starfield no hover: luz orbitando a borda + grade de pixels + halo
+// - Efeito Starfield: luz orbitando a borda + grade de pixels + halo (desligado por padrão)
 // - Arraste para qualquer lugar; a posição volta depois de reiniciar
 // - 10 texturas procedurais, desenhadas em código — nenhum arquivo de imagem
 // - Opacidade ajustável de 10% a 100%, aplicável em tempo real
@@ -61,12 +61,6 @@
 - Opacidade: 72
   $name: Opacidade do fundo
   $description: 10 = quase invisível, 100 = totalmente opaco.
-- OpacidadeHover: true
-  $name: Forçar 100% ao passar o mouse
-  $description: Ignora a opacidade enquanto o mouse está em cima.
-- EfeitoStarfield: true
-  $name: Efeito Starfield no hover
-  $description: Grade de pixels, luz orbitando a borda e halo ciano.
 - CorDivisoria: "#FFFFFF"
   $name: Cor da linha divisória
 - MostrarSempreVisivel: true
@@ -155,7 +149,7 @@ static std::vector<Button> g_buttons;
 static std::vector<Button> g_panelButtons;
 
 static bool   g_hover      = false;
-static double g_reveal     = 0.0;   // 0 repouso .. 1 hover completo
+static double g_reveal     = 1.0;   // 1 = fundo sempre presente
 static bool   g_running    = true;
 
 static int g_barW = 0;
@@ -164,8 +158,8 @@ static int g_barH = 0;
 // configurações
 static int       g_textura    = 0;
 static int       g_opacidade  = 72;
-static bool      g_forcar100  = true;
-static bool      g_starfield  = true;
+static bool      g_forcar100  = false;
+static bool      g_starfield  = false;
 static COLORREF  g_corDiv     = RGB(255, 255, 255);
 static bool      g_todasAreas = true;
 static std::wstring g_pastaOpenCode = L"H:\\DS CREATIVE";
@@ -246,8 +240,11 @@ static void CarregarConfig() {
     // mod continua com o comportamento correto em vez de virar tudo zero
     g_textura    = Wh_GetIntSetting(L"Textura", 0);
     g_opacidade  = Clamp(Wh_GetIntSetting(L"Opacidade", 72), 10, 100);
-    g_forcar100  = Wh_GetIntSetting(L"OpacidadeHover", 1) != 0;
-    g_starfield  = Wh_GetIntSetting(L"EfeitoStarfield", 1) != 0;
+    // O visual NÃO muda no hover. Os ajustes OpacidadeHover e EfeitoStarfield
+    // foram removidos de propósito: o Windhawk grava o valor escolhido no
+    // registro (HKLM\SOFTWARE\Windhawk\Engine\Mods\local@dscreative-bar\
+    // Settings) e ele sobreviveria a uma simples troca de padrão no código.
+    // g_forcar100 e g_starfield ficam fixos em falso.
     g_corDiv     = (COLORREF)Wh_GetIntSetting(L"CorDivisoria", RGB(255, 255, 255));
     g_todasAreas = Wh_GetIntSetting(L"MostrarSempreVisivel", 1) != 0;
 
@@ -1176,7 +1173,7 @@ static void DesenharDivisorias(Gdiplus::Graphics& g) {
 static void PintarBarra(Gdiplus::Graphics& g, int w, int h) {
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
     DesenharFundo(g, w, h, (int)(g_reveal * 255.0));
-    DesenharStarfield(g, w, h, (float)g_reveal);
+    DesenharStarfield(g, w, h, 0.0f);   // efeito removido a pedido
     DesenharDivisorias(g);
 
     for (const auto& b : g_buttons) {
@@ -1315,16 +1312,26 @@ static POINT PontoMouse(HWND hwnd) {
     return pt;
 }
 
-// Os botões têm 30px de lado separados por apenas 3px de gap. Um clique 2px
-// fora do ícone caía no gap, o WM_NCHITTEST devolvia HTCAPTION e a barra
-// INTEIRA era arrastada — o clique simplesmente desaparecia. O ponto passa a
-// ser associado ao botão mais próximo, esticando só na horizontal para cobrir
-// os gaps. A vertical continua exata, para o fundo continuar arrastando.
+// estado do arraste manual da barra
+static bool  g_arrastando = false;
+static POINT g_origemMouse{};
+static POINT g_origemJanela{};
+
+// Os botões têm 30px de lado separados por 3px de gap, dentro de uma barra de
+// 44px. A área de acerto era exata na vertical: um clique 1px acima ou abaixo
+// do ícone não pertencia a botão nenhum, virava arraste e DESAPARECIA — é a
+// causa do "às vezes clico e não responde".
+//
+// Agora TOL_X fecha os 3px de gap e TOL_Y abre na vertical até as bordas, ou
+// seja, a barra inteira é área de clique. Quem arrasta é o arraste manual em
+// WM_MOUSEMOVE, que só começa depois de 4px de movimento: clicar em qualquer
+// ponto acerta um botão e arrastar continua funcionando.
 static Button* BotaoMaisProximo(std::vector<Button>& v, const POINT& pt) {
-    const int TOL_X = 2;   // metade dos 3px de gap
+    const int TOL_X = 3;   // cobre os 3px de gap
+    const int TOL_Y = 8;   // abre na vertical até as bordas da barra
     for (auto& b : v)
         if (pt.x >= b.rc.left - TOL_X && pt.x <= b.rc.right + TOL_X &&
-            pt.y >= b.rc.top && pt.y <= b.rc.bottom)
+            pt.y >= b.rc.top - TOL_Y && pt.y <= b.rc.bottom + TOL_Y)
             return &b;
     return nullptr;
 }
@@ -1401,31 +1408,57 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_ERASEBKGND:
         return 1;   // o conteúdo vem do UpdateLayeredWindow
 
-    case WM_NCHITTEST: {
-        // O lParam do WM_NCHITTEST vem em COORDENADAS DE TELA, mas b.rc guarda
-        // coordenadas de cliente. Sem esta conversa o PtIn nunca acerta, o
-        // procedimento devolve HTCAPTION para tudo, e nenhum WM_LBUTTONUP chega
-        // — o clique vira arraste da barra inteira.
-        POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
-        ScreenToClient(hwnd, &pt);
-        if (BotaoMaisProximo(g_buttons, pt)) return HTCLIENT;
-        return HTCAPTION;      // arrastar a barra inteira
+    case WM_NCHITTEST:
+        // a barra inteira é área de clique; o arraste é tratado à mão abaixo
+        return HTCLIENT;
+
+    case WM_LBUTTONDOWN: {
+        SetCapture(hwnd);
+        g_arrastando = false;
+        GetCursorPos(&g_origemMouse);
+        RECT r{};
+        GetWindowRect(hwnd, &r);
+        g_origemJanela = POINT{ r.left, r.top };
+        return 0;
+    }
+
+    case WM_MOUSEMOVE: {
+        if (GetCapture() != hwnd) break;
+        POINT agora{};
+        GetCursorPos(&agora);
+        int dx = agora.x - g_origemMouse.x;
+        int dy = agora.y - g_origemMouse.y;
+        // 4px de folga: o tremor natural da mão não pode cancelar o clique
+        if (!g_arrastando && (dx > 4 || dx < -4 || dy > 4 || dy < -4)) {
+            g_arrastando = true;
+            if (g_panel) FecharPainel();   // o painel não acompanha o arraste
+        }
+        if (g_arrastando)
+            SetWindowPos(hwnd, HWND_TOPMOST,
+                         g_origemJanela.x + dx, g_origemJanela.y + dy, 0, 0,
+                         SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
+        return 0;
     }
 
     case WM_LBUTTONUP: {
-        POINT pt = PontoMouse(hwnd);
-        if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
+        bool arrastou = g_arrastando;
+        g_arrastando = false;
+        if (GetCapture() == hwnd) ReleaseCapture();
+        // usa o ponto do PRÓPRIO evento, não a posição do cursor agora
+        POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
+        if (arrastou) {
+            RECT r{};
+            GetWindowRect(hwnd, &r);
+            SalvarPosicao(r.left, r.top);
+        } else if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
             if (b->onClick) b->onClick();
         }
         return 0;
     }
 
-    case WM_EXITSIZEMOVE: {
-        RECT r{};
-        GetWindowRect(hwnd, &r);
-        SalvarPosicao(r.left, r.top);
+    case WM_CAPTURECHANGED:
+        g_arrastando = false;
         return 0;
-    }
 
     case WM_TIMER: {
         if (wp != IDT_HOVER) break;
@@ -1453,10 +1486,11 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         bool mudou = false;
         if (dentro != g_hover) { g_hover = dentro; mudou = true; }
 
-        double alvo = g_hover ? 1.0 : 0.0;
+        // Sem animação de hover: o fundo fica sempre presente, idêntico, com o
+        // mouse em cima ou não. Era esta revelação que fazia a barra "acender"
+        // quando o cursor passava por cima.
+        g_reveal = 1.0;
         bool animando = false;
-        if (g_reveal < alvo - 0.001) { g_reveal = (std::min)(alvo, g_reveal + 50.0 / 600.0); animando = true; }
-        else if (g_reveal > alvo + 0.001) { g_reveal = (std::max)(alvo, g_reveal - 50.0 / 600.0); animando = true; }
 
         if (mudou || animando) Compor(hwnd, g_barW, g_barH, false);
 
