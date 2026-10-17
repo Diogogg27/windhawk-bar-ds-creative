@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
-// @version         1.0.4
+// @version         1.0.5
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -541,18 +541,29 @@ static LRESULT CALLBACK HookDialogo(int code, WPARAM wp, LPARAM lp) {
         HWND dlg = (HWND)wp;
         RECT rd{}, rb{};
         if (GetWindowRect(dlg, &rd) && GetWindowRect(g_hwnd, &rb)) {
+            // Área útil do monitor ONDE A BARRA ESTÁ. Medido: usando a tela
+            // virtual, com a barra perto do fundo do monitor principal o
+            // diálogo nascia em y=1052 e ia até 1211, com o monitor terminando
+            // em 1080 — só 18% visível, ou seja, praticamente invisível.
+            HMONITOR mon = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO mi{};
+            mi.cbSize = sizeof(mi);
+            GetMonitorInfoW(mon, &mi);
+            RECT wa = mi.rcWork;
+
             int w = rd.right - rd.left;
+            int h = rd.bottom - rd.top;
             int x = rb.left + ((rb.right - rb.left) - w) / 2;
-            int y = rb.bottom + 8;
-            // não deixa o diálogo sair para fora da área de trabalho
-            int maxX = GetSystemMetrics(SM_CXVIRTUALSCREEN) +
-                       GetSystemMetrics(SM_XVIRTUALSCREEN) - w - 4;
-            int maxY = GetSystemMetrics(SM_CYVIRTUALSCREEN) +
-                       GetSystemMetrics(SM_YVIRTUALSCREEN) - (rd.bottom - rd.top) - 4;
-            if (x > maxX) x = maxX;
-            if (x < GetSystemMetrics(SM_XVIRTUALSCREEN) + 4)
-                x = GetSystemMetrics(SM_XVIRTUALSCREEN) + 4;
-            if (y > maxY) y = maxY;
+            int y = rb.bottom + 8;               // abaixo da barra
+            if (y + h > wa.bottom - 4) {         // não coube: vai para cima
+                int acima = rb.top - 8 - h;
+                y = (acima >= wa.top + 4) ? acima : (wa.bottom - 4 - h);
+            }
+            if (x + w > wa.right - 4)  x = wa.right - 4 - w;
+            if (x < wa.left + 4)       x = wa.left + 4;
+            if (y < wa.top + 4)        y = wa.top + 4;
+            if (y + h > wa.bottom - 4) y = wa.bottom - 4 - h;
+
             SetWindowPos(dlg, HWND_TOPMOST, x, y, 0, 0,
                          SWP_NOSIZE | SWP_NOACTIVATE);
         }
@@ -569,6 +580,7 @@ static bool Confirmar(const wchar_t* titulo, const wchar_t* texto) {
                                   GetCurrentThreadId());
     int r = MessageBoxW(g_hwnd, texto, titulo,
                         MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 |
+                        MB_TOPMOST |
                         MB_SETFOREGROUND);
     if (g_hookDlg) {
         UnhookWindowsHookEx(g_hookDlg);
@@ -587,7 +599,18 @@ static void EsvaziarLixeira() {
 
 static void Bloquear() {
     Marcar(L"Bloquear");
-    LockWorkStation();
+    if (LockWorkStation()) {
+        Marcar(L"  lock ok");
+        return;
+    }
+    DWORD e = GetLastError();
+    wchar_t m[96]{};
+    wsprintfW(m, L"  lock falhou err=%lu -> tentando rundll32", e);
+    Marcar(m);
+    // um processo novo nasce no desktop de entrada atual e costuma conseguir
+    // travar onde a thread do mod falha
+    ShellExecuteW(nullptr, L"open", L"rundll32.exe",
+                  L"user32.dll,LockWorkStation", nullptr, SW_HIDE);
 }
 
 static void HabilitarShutdown() {
@@ -608,19 +631,47 @@ static void Desligar() {
                    L"Desligar o computador em 30 segundos?"))
         return;
     HabilitarShutdown();
-    InitiateSystemShutdownExW(nullptr, const_cast<LPWSTR>(L"O computador vai desligar em 30 segundos."),
-                              30, TRUE, FALSE,
-                              SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_OTHER);
+    BOOL ok = InitiateSystemShutdownExW(
+        nullptr, const_cast<LPWSTR>(L"O computador vai desligar em 30 segundos."),
+        30, TRUE, FALSE,
+        SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_OTHER);
+    wchar_t m[96]{};
+    wsprintfW(m, L"  shutdown r=%d err=%lu", ok, (unsigned long)GetLastError());
+    Marcar(m);
 }
 
 // ---------------------------------------------------------------------------
-// Mídia — tecla real via SendInput.
-// WM_APPCOMMAND para GetForegroundWindow() falha quando a barra (que é
-// WS_EX_NOACTIVATE) ou a área de trabalho está na frente: a mensagem vai para
-// a janela errada e nada toca. Scan codes estendidos funcionam em qualquer
-// aplicativo, sem depender de quem está em primeiro plano.
+// Mídia — o caminho principal é a barra de tarefas, não o SendInput.
+//
+// MEDIDO em 17/10 com um rig (Media Session API + porta de depuração do
+// Chrome), cada caminho testado 2 vezes:
+//   SendInput com VK_MEDIA_*        -> devolve 2/2 e NÃO faz nada quando a
+//                                      janela em primeiro plano ignora teclas
+//                                      de mídia. Falso positivo silencioso; só
+//                                      funcionou com o Chrome na frente, o que
+//                                      explica o "às vezes funciona".
+//   WM_APPCOMMAND -> primeiro plano -> nada.
+//   WM_APPCOMMAND -> Shell_TrayWnd  -> funcionou 2 de 2, qualquer janela.
+//
+// Os dois caminhos NÃO rodam juntos: somados alternariam o play/pause duas
+// vezes e o efeito final seria nenhum.
 
-static void Midia(WORD vk) {
+static const int AC_PREV = 12;   // APPCOMMAND_MEDIA_PREVIOUSTRACK
+static const int AC_NEXT = 11;   // APPCOMMAND_MEDIA_NEXTTRACK
+static const int AC_PLAY = 14;   // APPCOMMAND_MEDIA_PLAY_PAUSE
+
+static void Midia(WORD vk, int appcmd) {
+    HWND tarefa = FindWindowW(L"Shell_TrayWnd", nullptr);
+    if (tarefa) {
+        DWORD_PTR res = 0;
+        SendMessageTimeoutW(tarefa, WM_APPCOMMAND, 0,
+                            (LPARAM)((DWORD)appcmd << 16),
+                            SMTO_ABORTIFHUNG, 800, &res);
+        Marcar(L"  midia via Shell_TrayWnd");
+        return;
+    }
+
+    // reserva: só quando não existe barra de tarefas
     INPUT in[2]{};
     for (auto& i : in) {
         i.type   = INPUT_KEYBOARD;
@@ -628,15 +679,9 @@ static void Midia(WORD vk) {
     }
     in[1].ki.dwFlags = KEYEVENTF_KEYUP;
     UINT enviadas = SendInput(2, in, sizeof(INPUT));
-    wchar_t num[40]{};
-    wsprintfW(num, L"Midia enviadas=%u/2", enviadas);
+    wchar_t num[48]{};
+    wsprintfW(num, L"  midia reserva SendInput=%u/2", enviadas);
     Marcar(num);
-    if (enviadas != 2) {
-        // fallback: keybd_event não depende do tamanho da struct INPUT
-        keybd_event((BYTE)vk, 0, 0, 0);
-        keybd_event((BYTE)vk, 0, KEYEVENTF_KEYUP, 0);
-        Marcar(L"Midia fallback keybd_event");
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -732,9 +777,9 @@ static void MonteBarra() {
 
     // --- E: mídia ---
     size_t e0 = g_buttons.size();
-    AddLine(g_buttons, LI_PREV,  [] { Marcar(L"Midia anterior");  Midia(VK_MEDIA_PREV_TRACK); });
-    AddLine(g_buttons, LI_PLAY,  [] { Marcar(L"Midia play/pause"); Midia(VK_MEDIA_PLAY_PAUSE); });
-    AddLine(g_buttons, LI_NEXT,  [] { Marcar(L"Midia proxima");   Midia(VK_MEDIA_NEXT_TRACK); });
+    AddLine(g_buttons, LI_PREV,  [] { Marcar(L"Midia anterior");  Midia(VK_MEDIA_PREV_TRACK,  AC_PREV); });
+    AddLine(g_buttons, LI_PLAY,  [] { Marcar(L"Midia play/pause"); Midia(VK_MEDIA_PLAY_PAUSE, AC_PLAY); });
+    AddLine(g_buttons, LI_NEXT,  [] { Marcar(L"Midia proxima");   Midia(VK_MEDIA_NEXT_TRACK,  AC_NEXT); });
 
     size_t fim = g_buttons.size();
 
