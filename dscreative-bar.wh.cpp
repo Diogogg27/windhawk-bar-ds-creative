@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.4.0
+// @version         1.4.1
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -11,35 +11,54 @@
 // ==/WindhawkMod==
 
 // ==WindhawkModReadme==
-// Floating Launcher Bar
-// =====================
-//
-// Uma barra de lançamento horizontal, minimalista e de flutuação livre que
-// vive sobre a área de trabalho do Windows 11.
-//
-// O que ela faz
-// -------------
-// - Fundo invisível por padrão: o painel aparece apenas quando o mouse passa
-// - Efeito Starfield: luz orbitando a borda + grade de pixels + halo (desligado por padrão)
-// - Arraste para qualquer lugar; a posição volta depois de reiniciar
-// - 10 texturas procedurais, desenhadas em código — nenhum arquivo de imagem
-// - Opacidade ajustável de 10% a 100%, aplicável em tempo real
-// - Grupos separados por linhas de 1px
-//
-// Ícones
-// ------
-// Este mod não distribui nenhum ícone. Os 20 ícones são marcas dos seus
-// respectivos donos (Adobe, Google, Meta, Telegram, Perplexity...).
-//
-// Extraia-os dos programas instalados na sua máquina:
-//
-//   powershell -ExecutionPolicy Bypass -File extrair-icones.ps1
-//
-// e aponte a configuração "Pasta de ícones" para a pasta resultante.
-//
-// Instalação
-// ----------
-// Windhawk > Mods > Create new mod > colar este arquivo > Compile.
+/*
+# Floating Launcher Bar
+
+Uma barra de atalhos que flutua sobre a área de trabalho do Windows 11: seus
+programas, as ações do sistema e o controle de mídia em uma linha só. Traços
+finos, ícones originais extraídos do seu próprio PC e nenhum emoji.
+
+A barra fica onde você deixar e volta para o mesmo lugar depois de reiniciar.
+
+## O que ela faz
+
+- Deitada (672x44) ou em pé (46x671), com os separadores acompanhando
+- Efeito magnético: os ícones crescem perto do cursor e voltam sozinhos
+- 10 temas de cor prontos, mais um personalizado de três cores
+- Escala de 70% a 150%, aplicada em tempo real
+- 10 texturas procedurais, desenhadas em código — nenhum arquivo de imagem
+- Opacidade de 10% a 100% só no fundo: os ícones ficam sempre nítidos
+- Arraste para qualquer lugar, cole nas bordas, trave no lugar, mantenha na área
+- Até 8 atalhos seus, com o ícone extraído do próprio programa
+- Painel do Creative Cloud, esvaziar lixeira, bloquear, desligar e mídia
+
+## O efeito magnético
+
+O ícone sob o cursor chega a 1,5 vez o tamanho; os vizinhos crescem menos, na
+proporção da distância, e tudo se acomoda em cerca de um quinto de segundo. O
+ícone cresce dentro da barra, então nenhum botão muda de lugar e o clique
+continua caindo onde sempre caiu.
+
+Três ajustes controlam: liga/desliga, **Força** (0 a 200%, 100 = 1,5 vez) e
+**Alcance** (20 a 500 pixels).
+
+## Ícones
+
+Este mod não distribui nenhum ícone. Os ícones são marcas dos seus respectivos
+donos — Adobe, Google, Meta, Telegram, Perplexity e outros — e são extraídos dos
+programas instalados na sua máquina:
+
+    powershell -ExecutionPolicy Bypass -File extrair-icones.ps1
+
+Depois aponte a configuração "Pasta de ícones" para a pasta resultante.
+
+## Instalação
+
+Windhawk > Mods > Create new mod > colar este arquivo > Compile.
+
+Código, o README completo e o efeito Starfield avulso estão em:
+https://github.com/Diogogg27/windhawk-bar-ds-creative
+*/
 // ==/WindhawkModReadme==
 
 // ==WindhawkModSettings==

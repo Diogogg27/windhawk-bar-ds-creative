@@ -1,8 +1,10 @@
-# O Windhawk só reconhece o bloco ==WindhawkMod== em arquivos com fim de
-# linha Windows. Sem isso, quem clonar o repositório com autocrlf desligado
-# recebe LF e o Windhawk falha com "Couldn't find a metadata block".
-*.wh.cpp text eol=crlf
-*.ps1    text eol=crlf
-*.md     text eol=lf
-*.html   text eol=lf
-*.png    binary
+# O arquivo do mod precisa de fim de linha LF.
+#
+# O Windhawk monta a aba "Detalhes" lendo o bloco ==WindhawkModReadme== do
+# proprio arquivo do mod, e o extrator dele nao aceita CRLF: o "$" do regex
+# precisa cair logo antes do \n, sem um \r no meio. Com CRLF a aba fica
+# "Faltam detalhes do Mod.".
+#
+# O core.autocrlf desta maquina esta em true e converteria o arquivo para CRLF
+# sozinho, entao o LF fica travado por aqui.
+*.wh.cpp text eol=lf
