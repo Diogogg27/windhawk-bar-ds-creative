@@ -1271,7 +1271,12 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 1;   // o conteúdo vem do UpdateLayeredWindow
 
     case WM_NCHITTEST: {
+        // O lParam do WM_NCHITTEST vem em COORDENADAS DE TELA, mas b.rc guarda
+        // coordenadas de cliente. Sem esta conversa o PtIn nunca acerta, o
+        // procedimento devolve HTCAPTION para tudo, e nenhum WM_LBUTTONUP chega
+        // — o clique vira arraste da barra inteira.
         POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
+        ScreenToClient(hwnd, &pt);
         for (const auto& b : g_buttons)
             if (PtIn(b.rc, pt)) return HTCLIENT;
         return HTCAPTION;      // arrastar a barra inteira
@@ -1356,7 +1361,10 @@ static LRESULT CALLBACK PainelProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 1;
 
     case WM_NCHITTEST: {
+        // Mesmo problema da barra: lParam em coordenadas de tela, b.rc em
+        // coordenadas de cliente.
         POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
+        ScreenToClient(hwnd, &pt);
         for (const auto& b : g_panelButtons)
             if (PtIn(b.rc, pt)) return HTCLIENT;
         return HTTRANSPARENT;
