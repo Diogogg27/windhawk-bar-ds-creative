@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.3.0
+// @version         1.4.0
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -133,6 +133,15 @@
 - ManterNaArea: true
   $name: Manter sempre na área de trabalho
   $description: Se a barra ficar fora da tela, ela volta sozinha para dentro.
+- EfeitoIma: true
+  $name: Efeito magnético nos ícones
+  $description: Ao passar o mouse, os ícones perto do cursor crescem e voltam ao normal sozinhos.
+- ForcaIma: 100
+  $name: Força do efeito magnético (%)
+  $description: 100 deixa o ícone sob o cursor 1,5 vez maior. Aceita de 0 a 200.
+- DistanciaIma: 150
+  $name: Alcance do efeito magnético (px)
+  $description: Até que distância os ícones vizinhos sentem o cursor. Padrão 150.
 - PastaOpenCode: ""
   $name: Pasta de trabalho do OpenCode
   $description: Deixe em branco para usar H:\DS CREATIVE.
@@ -245,6 +254,10 @@ static double g_escala = 1.0;
 static bool g_vertical     = false;   // em pé em vez de deitada
 static bool g_colarBordas  = true;    // encosta sozinha na borda ao soltar
 static bool g_travado      = false;   // não deixa arrastar
+// efeito magnético (o mesmo do componente MagneticDock)
+static bool g_efeitoIma    = true;
+static int  g_forcaIma     = 100;     // 100 = o ícone sob o cursor cresce 1,5 vez
+static int  g_distIma      = 150;     // alcance em px, medido no tamanho 100%
 static bool g_manterNaArea = true;    // nunca fica fora da tela
 
 // atalho cadastrado pelo usuário, no formato "Nome | Caminho". O caminho pode
@@ -266,6 +279,14 @@ static UINT g_textureW = 0, g_textureH = 0;
 
 static bool PtIn(const RECT& r, POINT p) {
     return p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom;
+}
+
+// mesma pergunta, mas com folga em volta. O painel do Adobe nasce 8px acima do
+// botão que o abre; sem folga essa faixa vira zona morta e o painel fecha
+// sozinho no meio de um movimento lento do mouse até ele.
+static bool PertoDe(const RECT& r, POINT p, int m = 16) {
+    return p.x >= r.left - m && p.x < r.right + m &&
+           p.y >= r.top  - m && p.y < r.bottom + m;
 }
 
 // expande %VARIAVEL% de um caminho
@@ -432,6 +453,10 @@ static void CarregarConfig() {
     g_colarBordas  = Wh_GetIntSetting(L"ColarBordas", 1) != 0;
     g_travado      = Wh_GetIntSetting(L"TravarLugar", 0) != 0;
     g_manterNaArea = Wh_GetIntSetting(L"ManterNaArea", 1) != 0;
+
+    g_efeitoIma    = Wh_GetIntSetting(L"EfeitoIma", 1) != 0;
+    g_forcaIma     = Clamp(Wh_GetIntSetting(L"ForcaIma", 100), 0, 200);
+    g_distIma      = Clamp(Wh_GetIntSetting(L"DistanciaIma", 150), 20, 500);
 
     PCWSTR s = Wh_GetStringSetting(L"PastaOpenCode");
     g_pastaOpenCode = (s && *s) ? s : L"H:\\DS CREATIVE";
@@ -1480,25 +1505,28 @@ static void DesenharStarfield(Gdiplus::Graphics& g, int w, int h, float rv) {
 }
 
 // ícone PNG original, centralizado e com proporção preservada
-static void DesenharIcone(Gdiplus::Graphics& g, const RECT& rc, const std::wstring& chave) {
+static void DesenharIcone(Gdiplus::Graphics& g, const RECT& rc, const std::wstring& chave,
+                          float escala = 1.0f, float subir = 0.0f) {
     using namespace Gdiplus;
     auto it = g_icons.find(chave);
     if (it == g_icons.end() || !it->second) return;
 
     int w = rc.right - rc.left;
     int h = rc.bottom - rc.top;
-    // 6px de folga em 30px de botão = 20%, proporcional na escala
-    int lado = (int)((std::min)(w, h) * 0.8f + 0.5f);
+    // 6px de folga em 30px de botão = 20%, proporcional na escala.
+    // "escala" é o efeito magnético: 1.0 é o tamanho normal.
+    int lado = (int)((std::min)(w, h) * 0.8f * escala + 0.5f);
     if (lado < 4) return;
 
     RectF dest((REAL)(rc.left + (w - lado) / 2.0f),
-               (REAL)(rc.top + (h - lado) / 2.0f),
+               (REAL)(rc.top + (h - lado) / 2.0f - subir),
                (REAL)lado, (REAL)lado);
     g.DrawImage(it->second, dest);
 }
 
 // ícone de linha: SVG de 24×24 traçado com 1,5px e pontas arredondadas
-static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone) {
+static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone,
+                          float escala = 1.0f, float subir = 0.0f) {
     using namespace Gdiplus;
     if (icone == LI_NONE) return;
 
@@ -1506,10 +1534,10 @@ static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone) {
     int h = rc.bottom - rc.top;
 
     // 20px de alvo dentro de um botão de 30px no desenho original
-    const REAL ALVO = (REAL)SLOT * (20.0f / 30.0f);
+    const REAL ALVO = (REAL)SLOT * (20.0f / 30.0f) * escala;
     REAL s = ALVO / 24.0f;
     REAL ox = (REAL)rc.left + (w - ALVO) / 2;
-    REAL oy = (REAL)rc.top + (h - ALVO) / 2;
+    REAL oy = (REAL)rc.top + (h - ALVO) / 2 - subir;
 
     GraphicsState st = g.Save();
     g.TranslateTransform(ox, oy);
@@ -1638,6 +1666,85 @@ static void DesenharDivisorias(Gdiplus::Graphics& g) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Efeito magnético dos ícones
+// ---------------------------------------------------------------------------
+// É o mesmo efeito do componente MagneticDock, com os mesmos números: o ícone
+// sob o cursor chega a 1,5 vez, os vizinhos caem linearmente até 1,0 no fim do
+// alcance (150px no original), a subida acompanha o tamanho, o botão apertado
+// afunda para 0,9 e a animação é mola {damping 20, stiffness 300, massa 0,5}.
+// O que muda é só o motor: lá é framer-motion no navegador, aqui é um passo
+// de integração a cada 16ms.
+static std::vector<float> g_imaEscala;   // escala desenhada de cada botão
+static std::vector<float> g_imaVel;      // velocidade da mola
+static std::vector<float> g_imaAlvo;     // para onde cada botão está indo
+static int  g_idxPressionado = -1;       // botão apertado (equivale ao whileTap)
+static UINT g_intervaloTimer = 50;       // 50ms parado, 16ms com a mola correndo
+
+static const float IMA_RIGIDEZ = 600.0f;   // stiffness / massa = 300 / 0.5
+static const float IMA_AMORTEC  = 40.0f;   // damping   / massa =  20 / 0.5
+static const float IMA_PASSO    = 1.0f / 60.0f;
+
+static void SincronizarIma() {
+    if (g_imaEscala.size() != g_buttons.size()) {
+        g_imaEscala.assign(g_buttons.size(), 1.0f);
+        g_imaVel.assign(g_buttons.size(), 0.0f);
+        g_imaAlvo.assign(g_buttons.size(), 1.0f);
+    }
+}
+
+// para onde cada ícone tem que ir. cli é o cursor em coordenadas do cliente.
+// ativo é falso quando o cursor está fora da barra — é o onMouseLeave do
+// original: fora dela tudo volta para 1.
+static void AlvoIma(POINT cli, bool ativo) {
+    SincronizarIma();
+    g_imaAlvo.assign(g_imaEscala.size(), 1.0f);
+    if (!g_efeitoIma || !ativo || g_imaEscala.empty()) return;
+
+    const float maxEsc  = 1.0f + 0.5f * ((float)g_forcaIma / 100.0f);
+    const float alcance = (float)g_distIma * (float)g_escala;
+    if (maxEsc <= 1.0f || alcance <= 1.0f) return;
+
+    const float pos = (float)(g_vertical ? cli.y : cli.x);
+    for (size_t i = 0; i < g_buttons.size(); i++) {
+        const RECT& b = g_buttons[i].rc;
+        // o original mede só no eixo do dock; no outro eixo não mede nada
+        const float centro = g_vertical ? (b.top + b.bottom) / 2.0f
+                                        : (b.left + b.right) / 2.0f;
+        const float d = std::fabs(pos - centro);
+        float f = 1.0f - d / alcance;          // 1 no centro, 0 no limite
+        if (f <= 0.0f) continue;
+        g_imaAlvo[i] = 1.0f + f * (maxEsc - 1.0f);
+    }
+
+    // whileTap={{ scale: 0.9 }}: o botão apertado encolhe por cima do efeito
+    if (g_idxPressionado >= 0 && (size_t)g_idxPressionado < g_imaAlvo.size())
+        g_imaAlvo[g_idxPressionado] *= 0.9f;
+}
+
+// um passo da mola. devolve o maior salto do quadro: 0 quer dizer parada.
+static float PassoIma() {
+    float maior = 0.0f;
+    for (size_t i = 0; i < g_imaEscala.size(); i++) {
+        float x = g_imaEscala[i];
+        float v = g_imaVel[i];
+        const float a = (g_imaAlvo[i] - x) * IMA_RIGIDEZ - v * IMA_AMORTEC;
+        v += a * IMA_PASSO;
+        x += v * IMA_PASSO;
+        // parou de verdade perto do alvo: encosta e zera, senão a mola fica
+        // tremendo em micro-passos para sempre e a barra nunca para de redesenhar
+        if (std::fabs(g_imaAlvo[i] - x) < 0.002f && std::fabs(v) < 0.02f) {
+            x = g_imaAlvo[i];
+            v = 0.0f;
+        }
+        const float salto = std::fabs(x - g_imaEscala[i]);
+        if (salto > maior) maior = salto;
+        g_imaEscala[i] = x;
+        g_imaVel[i] = v;
+    }
+    return maior;
+}
+
 // rotina principal da barra
 static void PintarBarra(Gdiplus::Graphics& g, int w, int h) {
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
@@ -1645,11 +1752,25 @@ static void PintarBarra(Gdiplus::Graphics& g, int w, int h) {
     DesenharStarfield(g, w, h, 0.0f);   // efeito removido a pedido
     DesenharDivisorias(g);
 
-    for (const auto& b : g_buttons) {
+    // Desenha em ordem de escala: o ícone maior por último. Sem isso um vizinho
+    // menor passaria por cima do maior quando os dois se encostam.
+    SincronizarIma();
+    std::vector<size_t> ordem(g_buttons.size());
+    for (size_t i = 0; i < ordem.size(); i++) ordem[i] = i;
+    if (g_efeitoIma)
+        std::stable_sort(ordem.begin(), ordem.end(),
+                         [](size_t a, size_t b) { return g_imaEscala[a] < g_imaEscala[b]; });
+
+    for (size_t i : ordem) {
+        const Button& b = g_buttons[i];
+        const float e = g_efeitoIma ? g_imaEscala[i] : 1.0f;
+        // sobe junto com o tamanho, como no original (lá: (escala-1) * -10 para
+        // um ícone de 56px; aqui o ícone tem 24px, então a conta dá 4)
+        const float subir = (e - 1.0f) * 4.0f * (float)g_escala;
         if (b.kind == BK_LINE) {
-            DesenharLinha(g, b.rc, b.lineIcon);
+            DesenharLinha(g, b.rc, b.lineIcon, e, subir);
         } else {
-            DesenharIcone(g, b.rc, b.iconKey);
+            DesenharIcone(g, b.rc, b.iconKey, e, subir);
         }
     }
 }
@@ -1952,6 +2073,13 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         RECT r{};
         GetWindowRect(hwnd, &r);
         g_origemJanela = POINT{ r.left, r.top };
+        // whileTap: guarda qual botão está apertado para ele afundar
+        g_idxPressionado = -1;
+        {
+            POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
+            if (Button* b = BotaoMaisProximo(g_buttons, pt))
+                g_idxPressionado = (int)(b - g_buttons.data());
+        }
         return 0;
     }
 
@@ -1977,6 +2105,7 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_LBUTTONUP: {
         bool arrastou = g_arrastando;
         g_arrastando = false;
+        g_idxPressionado = -1;
         if (GetCapture() == hwnd) ReleaseCapture();
         // usa o ponto do PRÓPRIO evento, não a posição do cursor agora
         POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
@@ -1998,6 +2127,7 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     case WM_CAPTURECHANGED:
         g_arrastando = false;
+        g_idxPressionado = -1;
         return 0;
 
     case WM_DISPLAYCHANGE:
@@ -2019,6 +2149,12 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         GetWindowRect(hwnd, &wr);
         bool dentro = PtIn(wr, pt);
 
+        // efeito magnético: recalcula o alvo e anda um passo da mola
+        POINT cli = pt;
+        ScreenToClient(hwnd, &cli);
+        AlvoIma(cli, dentro && !g_arrastando);
+        const float saltoIma = PassoIma();
+
         // painel fecha sozinho quando o mouse sai dele e do botão Adobe
         if (g_panel) {
             RECT pr{};
@@ -2028,9 +2164,9 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 const RECT& b = g_buttons[g_idxAdobe].rc;
                 br = b;
                 MapWindowPoints(hwnd, nullptr, (POINT*)&br, 2);
-                return PtIn(br, pt);
+                return PertoDe(br, pt);
             }();
-            if (!PtIn(pr, pt) && !noBotao) FecharPainel();
+            if (!PertoDe(pr, pt) && !noBotao) FecharPainel();
         }
 
         bool mudou = false;
@@ -2042,7 +2178,16 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         g_reveal = 1.0;
         bool animando = false;
 
-        if (mudou || animando) Compor(hwnd, g_barW, g_barH, false);
+        if (mudou || animando || saltoIma > 0.003f) Compor(hwnd, g_barW, g_barH, false);
+
+        // 16ms (60 quadros) enquanto a mola corre, 50ms parada. Sem trocar o
+        // intervalo o efeito fica aos saltos; sem voltar para 50ms ele ficaria
+        // gastando processador para sempre com a barra parada.
+        const UINT quer = (saltoIma > 0.0f) ? 16u : 50u;
+        if (quer != g_intervaloTimer) {
+            g_intervaloTimer = quer;
+            SetTimer(hwnd, IDT_HOVER, quer, nullptr);
+        }
 
         // garante que a barra continue por cima
         if (g_todasAreas && (GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0)

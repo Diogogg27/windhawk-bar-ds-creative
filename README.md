@@ -45,8 +45,24 @@ tela.
 ### O fundo fica
 
 A barra tem fundo **sempre visível**, com o tema, a textura e a opacidade que
-você escolher. Passar o mouse por cima **não muda nada** — nem a opacidade, nem
-o desenho.
+você escolher. Passar o mouse por cima não troca o tema, não acende a barra e não
+mexe na opacidade: o único movimento é o dos ícones, no efeito magnético.
+
+### Efeito magnético nos ícones
+
+Os ícones **crescem perto do cursor e voltam ao normal sozinhos**, como um dock
+magnético. O ícone sob o cursor chega a **1,5 vez** o tamanho; os vizinhos crescem
+menos, na proporção exata da distância, e tudo se acomoda em cerca de um quinto de
+segundo.
+
+O ícone cresce **dentro da barra**: ela não estica, não empurra os vizinhos de
+lugar e a posição de cada botão nunca muda — o clique continua caindo onde sempre
+caiu. Funciona igual deitada ou em pé.
+
+Medido com o mod rodando, cursor no meio da barra: o ícone sob o cursor mediu
+**34px contra 22px** em repouso, os dez botões fora do alcance ficaram em 1,000
+exato, e a conta do mod bateu com o tamanho na tela com **0,009 de erro médio**
+em 18 botões. Desligar o efeito devolve todos os botões a 1,000 exato.
 
 ### Clique em qualquer lugar, arraste segurando
 
@@ -140,6 +156,18 @@ acompanham a cor do tema escolhido.
 Deslizador de **10% a 100%**, aplicado só ao fundo. Os ícones e as linhas ficam
 sempre em 100%, então a barra nunca perde legibilidade por estar transparente.
 
+### Efeito magnético
+
+| Ajuste | O que faz |
+|---|---|
+| **Efeito magnético nos ícones** | Liga e desliga a atração. Vem ligado |
+| **Força do efeito magnético (%)** | Quanto o ícone sob o cursor cresce. 100 = 1,5 vez, até 200 |
+| **Alcance do efeito magnético (px)** | Até onde os vizinhos sentem o cursor. Padrão 150 |
+
+O alcance é medido no tamanho 100% e **acompanha a Escala**: em 150% ele alcança
+os mesmos botões de sempre, só que maiores. Força 0 deixa a barra parada sem
+precisar desligar o efeito.
+
 ### Mais
 
 - Cor do fundo, dos traços e da divisória (no tema Personalizado)
@@ -151,10 +179,11 @@ sempre em 100%, então a barra nunca perde legibilidade por estar transparente.
 
 ## Efeito Starfield (fora do mod)
 
-O mod **não tem mais** efeito de hover. Antes a barra era limpa no repouso e
-acendia ao passar o mouse — luz percorrendo a borda, grade de pixels cintilando e
-halo interno subindo em 600 ms. Isso trocava o visual inteiro a cada movimento do
-mouse e foi removido.
+O mod **não tem mais** o efeito de hover antigo. Antes a barra era limpa no
+repouso e acendia ao passar o mouse — luz percorrendo a borda, grade de pixels
+cintilando e halo interno subindo em 600 ms. Isso trocava o visual inteiro a cada
+movimento do mouse e foi removido. O que existe hoje no lugar é o **efeito
+magnético dos ícones**, descrito acima — a barra em si continua parada.
 
 O efeito continua no repositório como **demo avulso**, sem relação com o mod:
 
