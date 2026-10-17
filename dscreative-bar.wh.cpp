@@ -627,7 +627,16 @@ static void Midia(WORD vk) {
         i.ki.wVk = vk;
     }
     in[1].ki.dwFlags = KEYEVENTF_KEYUP;
-    SendInput(2, in, sizeof(INPUT));
+    UINT enviadas = SendInput(2, in, sizeof(INPUT));
+    wchar_t num[40]{};
+    wsprintfW(num, L"Midia enviadas=%u/2", enviadas);
+    Marcar(num);
+    if (enviadas != 2) {
+        // fallback: keybd_event não depende do tamanho da struct INPUT
+        keybd_event((BYTE)vk, 0, 0, 0);
+        keybd_event((BYTE)vk, 0, KEYEVENTF_KEYUP, 0);
+        Marcar(L"Midia fallback keybd_event");
+    }
 }
 
 // ---------------------------------------------------------------------------
