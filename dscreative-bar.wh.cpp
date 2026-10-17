@@ -265,7 +265,10 @@ static void CarregarConfig() {
     Wh_FreeStringSetting(s);
 
     s = Wh_GetStringSetting(L"PastaIcones");
-    g_pastaIcones = Expandir(s ? s : L"");
+    // Wh_GetStringSetting devolve L"" (vazio, e não nulo) quando nada foi salvo
+    // e o padrão não se aplica — sem este fallback nenhum PNG é carregado e a
+    // barra fica só com os ícones desenhados em código (Sistema e Mídia).
+    g_pastaIcones = Expandir((s && *s) ? s : L"%USERPROFILE%\\windhawk-bar-ds-creative\\icons");
     Wh_FreeStringSetting(s);
 }
 
