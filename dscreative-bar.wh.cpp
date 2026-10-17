@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
-// @version         1.0.2
+// @version         1.0.3
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -96,12 +96,20 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// mídia por tecla real (SendInput). WM_APPCOMMAND depende da janela em
-// primeiro plano e falha quando a barra ou a área de trabalho está na frente.
-// Scan codes estendidos das teclas de mídia.
-#define SC_MEDIA_PREV  0xE010
-#define SC_MEDIA_PLAY  0xE022
-#define SC_MEDIA_NEXT  0xE019
+// mídia por tecla virtual real (SendInput). WM_APPCOMMAND depende da janela em
+// primeiro plano e falha quando a barra WS_EX_NOACTIVATE ou a área de trabalho
+// está na frente: a mensagem vai para a janela errada e nada toca.
+// Teclas virtuais, não scan codes — SendInput com wScan + 0xE0 no valor alto
+// não gera a tecla estendida.
+#ifndef VK_MEDIA_PREV_TRACK
+#define VK_MEDIA_PREV_TRACK  0xB1
+#endif
+#ifndef VK_MEDIA_PLAY_PAUSE
+#define VK_MEDIA_PLAY_PAUSE  0xB3
+#endif
+#ifndef VK_MEDIA_NEXT_TRACK
+#define VK_MEDIA_NEXT_TRACK  0xB0
+#endif
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -500,34 +508,73 @@ static void AbrirOpenCode() {
 // Ações do sistema
 // ---------------------------------------------------------------------------
 
-// rastro da última ação em HKCU, para provar se o clique chegou ao botão
+// rastro cumulativo das ações em %TEMP%\dscreative-bar.log — prova se o clique
+// chegou ao botão quando algo "não responde"
 static void Marcar(const wchar_t* acao) {
-    HKEY k = nullptr;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER,
-                        L"Software\\Windhawk\\Engine\\Mods\\dscreative-bar",
-                        0, nullptr, 0, KEY_WRITE, nullptr, &k, nullptr) != ERROR_SUCCESS)
-        return;
     SYSTEMTIME st{};
     GetLocalTime(&st);
-    wchar_t hora[32]{};
-    wsprintfW(hora, L"%02d/%02d %02d:%02d:%02d", st.wDay, st.wMonth,
+    wchar_t hora[40]{};
+    wsprintfW(hora, L"%02d/%02d %02d:%02d:%02d  ", st.wDay, st.wMonth,
               st.wHour, st.wMinute, st.wSecond);
-    std::wstring v = hora;
-    v += L" ";
-    v += acao;
-    RegSetValueExW(k, L"UltimaAcao", 0, REG_SZ,
-                   (const BYTE*)v.c_str(), (DWORD)((v.size() + 1) * sizeof(wchar_t)));
-    RegCloseKey(k);
+    wchar_t dir[MAX_PATH]{};
+    GetTempPathW(MAX_PATH, dir);
+    std::wstring caminho = dir;
+    caminho += L"dscreative-bar.log";
+    HANDLE f = CreateFileW(caminho.c_str(), FILE_APPEND_DATA,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (f == INVALID_HANDLE_VALUE) return;
+    DWORD n = 0;
+    WriteFile(f, hora, (DWORD)wcslen(hora) * sizeof(wchar_t), &n, nullptr);
+    WriteFile(f, acao, (DWORD)wcslen(acao) * sizeof(wchar_t), &n, nullptr);
+    WriteFile(f, L"\r\n", 4, &n, nullptr);
+    CloseHandle(f);
+}
+
+// A confirmação nasce no centro do monitor, longe da barra — quem olha para a
+// barra acha que o botão não fez nada. Um gancho WH_CBT reposiciona o diálogo
+// para junto da barra assim que ele é ativado.
+static HHOOK g_hookDlg = nullptr;
+
+static LRESULT CALLBACK HookDialogo(int code, WPARAM wp, LPARAM lp) {
+    if (code == HCBT_ACTIVATE && g_hwnd) {
+        HWND dlg = (HWND)wp;
+        RECT rd{}, rb{};
+        if (GetWindowRect(dlg, &rd) && GetWindowRect(g_hwnd, &rb)) {
+            int w = rd.right - rd.left;
+            int x = rb.left + ((rb.right - rb.left) - w) / 2;
+            int y = rb.bottom + 8;
+            // não deixa o diálogo sair para fora da área de trabalho
+            int maxX = GetSystemMetrics(SM_CXVIRTUALSCREEN) +
+                       GetSystemMetrics(SM_XVIRTUALSCREEN) - w - 4;
+            int maxY = GetSystemMetrics(SM_CYVIRTUALSCREEN) +
+                       GetSystemMetrics(SM_YVIRTUALSCREEN) - (rd.bottom - rd.top) - 4;
+            if (x > maxX) x = maxX;
+            if (x < GetSystemMetrics(SM_XVIRTUALSCREEN) + 4)
+                x = GetSystemMetrics(SM_XVIRTUALSCREEN) + 4;
+            if (y > maxY) y = maxY;
+            SetWindowPos(dlg, HWND_TOPMOST, x, y, 0, 0,
+                         SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+    return CallNextHookEx(g_hookDlg, code, wp, lp);
 }
 
 // MB_SETFOREGROUND é obrigatório: sem ela o diálogo nasce atrás das janelas de
-// topo (Raycast, NVIDIA, PowerToys) e parece que o botão não fez nada — o dono
-// é a barra, que tem WS_EX_NOACTIVATE e não ativa a janela filha.
+// topo (Raycast, NVIDIA, PowerToys) e o dono — a barra — tem WS_EX_NOACTIVATE,
+// que não ativa a janela filha.
 static bool Confirmar(const wchar_t* titulo, const wchar_t* texto) {
     Marcar(titulo);
-    return MessageBoxW(g_hwnd, texto, titulo,
-                       MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 |
-                       MB_SETFOREGROUND) == IDYES;
+    g_hookDlg = SetWindowsHookExW(WH_CBT, HookDialogo, nullptr,
+                                  GetCurrentThreadId());
+    int r = MessageBoxW(g_hwnd, texto, titulo,
+                        MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 |
+                        MB_SETFOREGROUND);
+    if (g_hookDlg) {
+        UnhookWindowsHookEx(g_hookDlg);
+        g_hookDlg = nullptr;
+    }
+    return r == IDYES;
 }
 
 static void EsvaziarLixeira() {
@@ -573,14 +620,13 @@ static void Desligar() {
 // a janela errada e nada toca. Scan codes estendidos funcionam em qualquer
 // aplicativo, sem depender de quem está em primeiro plano.
 
-static void Midia(WORD scancode) {
+static void Midia(WORD vk) {
     INPUT in[2]{};
     for (auto& i : in) {
-        i.type       = INPUT_KEYBOARD;
-        i.ki.wScan   = scancode;
-        i.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_EXTENDEDKEY;
+        i.type   = INPUT_KEYBOARD;
+        i.ki.wVk = vk;
     }
-    in[1].ki.dwFlags |= KEYEVENTF_KEYUP;
+    in[1].ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(2, in, sizeof(INPUT));
 }
 
@@ -677,9 +723,9 @@ static void MonteBarra() {
 
     // --- E: mídia ---
     size_t e0 = g_buttons.size();
-    AddLine(g_buttons, LI_PREV,  [] { Marcar(L"Midia anterior");  Midia(SC_MEDIA_PREV); });
-    AddLine(g_buttons, LI_PLAY,  [] { Marcar(L"Midia play/pause"); Midia(SC_MEDIA_PLAY); });
-    AddLine(g_buttons, LI_NEXT,  [] { Marcar(L"Midia proxima");   Midia(SC_MEDIA_NEXT); });
+    AddLine(g_buttons, LI_PREV,  [] { Marcar(L"Midia anterior");  Midia(VK_MEDIA_PREV_TRACK); });
+    AddLine(g_buttons, LI_PLAY,  [] { Marcar(L"Midia play/pause"); Midia(VK_MEDIA_PLAY_PAUSE); });
+    AddLine(g_buttons, LI_NEXT,  [] { Marcar(L"Midia proxima");   Midia(VK_MEDIA_NEXT_TRACK); });
 
     size_t fim = g_buttons.size();
 
