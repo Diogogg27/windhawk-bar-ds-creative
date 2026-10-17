@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais, controle de opacidade e efeito Starfield no hover.
-// @version         1.0.3
+// @version         1.0.4
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -1261,6 +1261,20 @@ static POINT PontoMouse(HWND hwnd) {
     return pt;
 }
 
+// Os botões têm 30px de lado separados por apenas 3px de gap. Um clique 2px
+// fora do ícone caía no gap, o WM_NCHITTEST devolvia HTCAPTION e a barra
+// INTEIRA era arrastada — o clique simplesmente desaparecia. O ponto passa a
+// ser associado ao botão mais próximo, esticando só na horizontal para cobrir
+// os gaps. A vertical continua exata, para o fundo continuar arrastando.
+static Button* BotaoMaisProximo(std::vector<Button>& v, const POINT& pt) {
+    const int TOL_X = 2;   // metade dos 3px de gap
+    for (auto& b : v)
+        if (pt.x >= b.rc.left - TOL_X && pt.x <= b.rc.right + TOL_X &&
+            pt.y >= b.rc.top && pt.y <= b.rc.bottom)
+            return &b;
+    return nullptr;
+}
+
 static void FecharPainel() {
     if (!g_panel) return;
     HWND p = g_panel;
@@ -1340,18 +1354,14 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         // — o clique vira arraste da barra inteira.
         POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
         ScreenToClient(hwnd, &pt);
-        for (const auto& b : g_buttons)
-            if (PtIn(b.rc, pt)) return HTCLIENT;
+        if (BotaoMaisProximo(g_buttons, pt)) return HTCLIENT;
         return HTCAPTION;      // arrastar a barra inteira
     }
 
     case WM_LBUTTONUP: {
         POINT pt = PontoMouse(hwnd);
-        for (auto& b : g_buttons) {
-            if (PtIn(b.rc, pt)) {
-                if (b.onClick) b.onClick();
-                return 0;
-            }
+        if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
+            if (b->onClick) b->onClick();
         }
         return 0;
     }
@@ -1428,20 +1438,17 @@ static LRESULT CALLBACK PainelProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         // coordenadas de cliente.
         POINT pt{ (short)LOWORD(lp), (short)HIWORD(lp) };
         ScreenToClient(hwnd, &pt);
-        for (const auto& b : g_panelButtons)
-            if (PtIn(b.rc, pt)) return HTCLIENT;
+        if (BotaoMaisProximo(g_panelButtons, pt)) return HTCLIENT;
         return HTTRANSPARENT;
     }
 
     case WM_LBUTTONUP: {
         POINT pt = PontoMouse(hwnd);
-        for (auto& b : g_panelButtons) {
-            if (PtIn(b.rc, pt)) {
-                auto fn = b.onClick;
-                FecharPainel();
-                if (fn) fn();
-                return 0;
-            }
+        if (Button* b = BotaoMaisProximo(g_panelButtons, pt)) {
+            auto fn = b->onClick;
+            FecharPainel();
+            if (fn) fn();
+            return 0;
         }
         FecharPainel();
         return 0;
