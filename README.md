@@ -30,12 +30,20 @@ em grupos por linhas de 1px:
 | **Sistema** | Esvaziar lixeira, bloquear, desligar |
 | **Mídia** | Anterior, tocar/pausar, próxima — funciona com qualquer player |
 
-### O fundo some
+### O fundo fica
 
-A barra **não tem fundo**. Ele aparece **apenas quando o mouse passa por cima**,
-com a textura e a opacidade que você escolher. Fora disso, só os ícones flutuando.
+A barra tem fundo **sempre visível**, com a textura e a opacidade que você
+escolher. Passar o mouse por cima **não muda nada** — nem a opacidade, nem o
+desenho.
 
-### Arrasta e lembra
+### Clique em qualquer lugar, arraste segurando
+
+**A barra inteira é área de clique.** Não existe zona morta: clicar 1px acima ou
+abaixo de um ícone ativa o mesmo botão. Medido na 1.0.6 — antes disso, 13 dos 44
+pixels de altura engoliam o clique em silêncio e a barra era arrastada no lugar.
+
+Para **arrastar**, segure e mova mais de 4px. O tremor natural da mão não cancela
+mais o clique, e um clique nunca move a barra sem querer.
 
 A barra é de **flutuação livre**: arraste para qualquer lugar da tela. Ela guarda
 a posição e volta para o mesmo lugar depois de reiniciar o explorer.
@@ -59,39 +67,38 @@ Desenhadas em GDI+ na hora — sem arquivo de imagem, quase nada de peso.
 
 ### Opacidade
 
-Deslizador de **10% a 100%**. Uma opção extra força 100% enquanto o mouse está
-em cima, para nunca perder legibilidade.
+Deslizador de **10% a 100%**, aplicado só ao fundo. Os ícones e as linhas ficam
+sempre em 100%, então a barra nunca perde legibilidade por estar transparente.
 
 ### Mais
 
 - Cor da linha divisória
 - Mostrar em todas as áreas de trabalho
-- Ignorar clique de maximizar
 - Pasta de trabalho do OpenCode
+- Pasta de ícones
 
 ---
 
-## Efeito Starfield
+## Efeito Starfield (fora do mod)
 
-A barra fica **limpa no repouso**. No hover sobem juntos, em 600 ms:
+O mod **não tem mais** efeito de hover. Antes a barra era limpa no repouso e
+acendia ao passar o mouse — luz percorrendo a borda, grade de pixels cintilando e
+halo interno subindo em 600 ms. Isso trocava o visual inteiro a cada movimento do
+mouse e foi removido.
 
-- uma **luz** percorrendo a borda por comprimento de arco — 1 volta a cada 5 s,
-  anti-horário, velocidade constante nas retas e nas curvas
-- uma **grade de pixels** cintilando dentro da barra (canvas aditivo)
-- um **halo interno** desfocado acendendo pela borda
+O efeito continua no repositório como **demo avulso**, sem relação com o mod:
 
-Tudo no ciano do preset: `#00EFFF` luz · `#83FFF5` pixels · `#00DFFF` halo.
+**[`starfield.html`](starfield.html)** — abra direto no navegador e passe o mouse.
 
-<img src="imagens/print-starfield.png" alt="Efeito Starfield no hover" width="760">
+<img src="imagens/print-starfield.png" alt="Efeito Starfield" width="760">
 
-**Demo avulso, sem ícones:** [`starfield.html`](starfield.html) — abra direto no
-navegador e passe o mouse.
-
-O efeito é o
+É o
 [Starfield Button](https://www.originkit.dev/components/starfield-button)
 da **Originkit**, portado de React/Framer Motion para JavaScript puro — o
 repositório não tem build. As funções `pointOnRoundRect`, `buildCity`, `draw` e
 `placeLights` são as da fonte original, não uma reescrita.
+
+Ciano do preset: `#00EFFF` luz · `#83FFF5` pixels · `#00DFFF` halo.
 
 ---
 
@@ -105,7 +112,8 @@ repositório não tem build. As funções `pointOnRoundRect`, `buildCity`, `draw
 
 > O arquivo [`dscreative-bar.wh.cpp`](dscreative-bar.wh.cpp) é o mod completo.
 > Compila sem nenhum erro e sem nenhum aviso com clang 20 / `-Wall -Wextra`.
-> A especificação que o originou está em [`SPEC.md`](SPEC.md).
+> A especificação que o originou está em [`SPEC.md`](SPEC.md) — ela descreve o
+> desenho original, incluindo o efeito de hover que foi removido depois.
 
 ---
 
