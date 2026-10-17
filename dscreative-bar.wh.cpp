@@ -1,8 +1,8 @@
 // ==WindhawkMod==
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
-// @description     Barra de lançamento horizontal, minimalista e de flutuação livre. 20 atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.0.7
+// @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
+// @version         1.3.0
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -61,10 +61,78 @@
 - Opacidade: 72
   $name: Opacidade do fundo
   $description: 10 = quase invisível, 100 = totalmente opaco.
+- Escala: 100
+  $name: Escala da barra
+  $description: Tamanho de tudo — botões, ícones, espaçamentos e cantos.
+  $options:
+  - 70: 70%
+  - 80: 80%
+  - 90: 90%
+  - 100: 100%
+  - 115: 115%
+  - 130: 130%
+  - 150: 150%
+- Atalho1: ""
+  $name: Atalho 1 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho2: ""
+  $name: Atalho 2 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho3: ""
+  $name: Atalho 3 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho4: ""
+  $name: Atalho 4 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho5: ""
+  $name: Atalho 5 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho6: ""
+  $name: Atalho 6 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho7: ""
+  $name: Atalho 7 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalho8: ""
+  $name: Atalho 8 - nome | caminho
+  $description: Blender | D:\Programas\Blender\blender.exe
+- Tema: 1
+  $name: Tema de cores
+  $description: Escolha Personalizado para usar as três cores soltas de baixo.
+  $options:
+  - 0: Personalizado
+  - 1: Escuro
+  - 2: Preto total
+  - 3: Grafite
+  - 4: Ardósia
+  - 5: Verde-noite
+  - 6: Vinho
+  - 7: Âmbar
+  - 8: Claro
+  - 9: Papel
+- CorFundo: "#0A0D12"
+  $name: Cor do fundo (só no tema Personalizado)
+  $description: Escreva no formato #RRGGBB.
+- CorLinha: "#FFFFFF"
+  $name: Cor dos traços e ícones (só no tema Personalizado)
+  $description: Escreva no formato #RRGGBB.
 - CorDivisoria: "#FFFFFF"
-  $name: Cor da linha divisória
+  $name: Cor da linha divisória (só no tema Personalizado)
+  $description: Escreva no formato #RRGGBB.
 - MostrarSempreVisivel: true
   $name: Mostrar em todas as áreas de trabalho
+- Vertical: false
+  $name: Barra em pé
+  $description: Em vez de deitada, a barra fica em pé na vertical.
+- ColarBordas: true
+  $name: Colar nas bordas
+  $description: Ao soltar a barra perto de uma borda da tela, ela encosta sozinha nela.
+- TravarLugar: false
+  $name: Travar no lugar
+  $description: Impede de arrastar a barra. O clique nos botões continua funcionando.
+- ManterNaArea: true
+  $name: Manter sempre na área de trabalho
+  $description: Se a barra ficar fora da tela, ela volta sozinha para dentro.
 - PastaOpenCode: ""
   $name: Pasta de trabalho do OpenCode
   $description: Deixe em branco para usar H:\DS CREATIVE.
@@ -114,6 +182,7 @@ enum LineIcon {
     LI_TRASH,
     LI_LOCK,
     LI_POWER,
+    LI_USER,   // reserva de atalho sem ícone próprio: caixa + seta
     LI_PREV,
     LI_PLAY,
     LI_NEXT,
@@ -168,6 +237,25 @@ static std::wstring g_pastaIcones;
 // GDI+
 static ULONG_PTR g_gdiplusToken = 0;
 static std::map<std::wstring, Gdiplus::Bitmap*> g_icons;
+
+// escala global da barra: 1.0 = desenho original de 30px por botão
+static double g_escala = 1.0;
+
+// opções de posição, todas ajustáveis nas configurações
+static bool g_vertical     = false;   // em pé em vez de deitada
+static bool g_colarBordas  = true;    // encosta sozinha na borda ao soltar
+static bool g_travado      = false;   // não deixa arrastar
+static bool g_manterNaArea = true;    // nunca fica fora da tela
+
+// atalho cadastrado pelo usuário, no formato "Nome | Caminho". O caminho pode
+// ser um .exe, uma pasta, um documento ou um site. Um terceiro campo opcional
+// diz de qual arquivo tirar o ícone, quando o alvo não tem um.
+struct AtalhoUser {
+    std::wstring nome;
+    std::wstring alvo;
+    std::wstring iconeDe;
+};
+static std::vector<AtalhoUser> g_atalhos;
 static Gdiplus::Bitmap* g_texture = nullptr;
 static int g_textureId = -1;
 static UINT g_textureW = 0, g_textureH = 0;
@@ -233,6 +321,87 @@ static bool LerPosicao(int& x, int& y) {
 // Configurações do mod
 // ---------------------------------------------------------------------------
 
+// comparado sem <cwctype> para não arrastar mais um include
+static bool EspacoW(wchar_t c) {
+    return c == L' ' || c == L'\t' || c == L'\r' || c == L'\n';
+}
+
+static std::wstring Aparar(const std::wstring& s) {
+    size_t i = 0, f = s.size();
+    while (i < f && EspacoW(s[i])) i++;
+    while (f > i && EspacoW(s[f - 1])) f--;
+    return s.substr(i, f - i);
+}
+
+// ---------------------------------------------------------------------------
+// Tema de cores
+//
+// Um tema é só um trio: cor base do fundo, cor dos traços e cor da divisória.
+// É o mínimo que muda a cara da barra inteira sem tocar em cada desenho.
+// O índice 0 não tem cores próprias: significa "use as três cores soltas dos
+// ajustes", e por isso AplicarTema sai antes de mexer em qualquer coisa.
+// ---------------------------------------------------------------------------
+
+struct TemaCores {
+    const wchar_t* nome;
+    COLORREF fundo;
+    COLORREF linha;
+    COLORREF divisoria;
+};
+
+static const TemaCores kTemas[] = {
+    { L"Personalizado", RGB(10, 13, 18),    RGB(255, 255, 255), RGB(255, 255, 255) },
+    { L"Escuro",        RGB(10, 13, 18),    RGB(255, 255, 255), RGB(255, 255, 255) },
+    { L"Preto total",   RGB(0, 0, 0),       RGB(237, 237, 237), RGB(42, 42, 42)    },
+    { L"Grafite",       RGB(28, 28, 30),    RGB(242, 242, 247), RGB(72, 72, 74)    },
+    { L"Ardósia",       RGB(23, 27, 34),    RGB(220, 227, 237), RGB(48, 58, 74)    },
+    { L"Verde-noite",   RGB(7, 16, 13),     RGB(207, 245, 228), RGB(27, 58, 46)    },
+    { L"Vinho",         RGB(21, 10, 14),    RGB(247, 218, 225), RGB(70, 32, 43)    },
+    { L"Âmbar",         RGB(20, 16, 10),    RGB(247, 230, 200), RGB(70, 58, 34)    },
+    { L"Claro",         RGB(244, 244, 246), RGB(29, 29, 31),   RGB(201, 201, 206) },
+    { L"Papel",         RGB(239, 233, 220), RGB(42, 37, 27),   RGB(207, 198, 180) },
+};
+
+static int      g_tema     = 1;                       // 1 = Escuro, o de sempre
+static COLORREF g_corBase  = RGB(10, 13, 18);
+static COLORREF g_corLinha = RGB(255, 255, 255);
+
+// Aceita "#RRGGBB" ou "RRGGBB", com ou sem espaços em volta.
+static bool HexCor(const std::wstring& bruto, COLORREF& cor) {
+    std::wstring s = Aparar(bruto);
+    if (!s.empty() && s[0] == L'#') s = s.substr(1);
+    if (s.size() != 6) return false;
+
+    int v[6];
+    for (int i = 0; i < 6; i++) {
+        wchar_t c = s[i];
+        if (c >= L'0' && c <= L'9')      v[i] = c - L'0';
+        else if (c >= L'a' && c <= L'f') v[i] = c - L'a' + 10;
+        else if (c >= L'A' && c <= L'F') v[i] = c - L'A' + 10;
+        else return false;
+    }
+    cor = RGB(v[0] * 16 + v[1], v[2] * 16 + v[3], v[4] * 16 + v[5]);
+    return true;
+}
+
+// Uma cor escrita torta não pode derrubar o tema: cai no padrão e pronto.
+static COLORREF LerCor(PCWSTR nome, const wchar_t* padrao) {
+    COLORREF cor = RGB(255, 255, 255);
+    HexCor(padrao, cor);
+    PCWSTR v = Wh_GetStringSetting(nome);
+    if (v && *v) HexCor(v, cor);
+    Wh_FreeStringSetting(v);
+    return cor;
+}
+
+static void AplicarTema() {
+    int i = Clamp(g_tema, 0, (int)_countof(kTemas) - 1);
+    if (i == 0) return;   // Personalizado: valem as cores lidas dos ajustes
+    g_corBase  = kTemas[i].fundo;
+    g_corLinha = kTemas[i].linha;
+    g_corDiv   = kTemas[i].divisoria;
+}
+
 static void CarregarConfig() {
     // nesta versão do Windhawk não existe Wh_GetBoolSetting:
     // bools voltam como int via Wh_GetIntSetting
@@ -245,8 +414,24 @@ static void CarregarConfig() {
     // registro (HKLM\SOFTWARE\Windhawk\Engine\Mods\local@dscreative-bar\
     // Settings) e ele sobreviveria a uma simples troca de padrão no código.
     // g_forcar100 e g_starfield ficam fixos em falso.
-    g_corDiv     = (COLORREF)Wh_GetIntSetting(L"CorDivisoria", RGB(255, 255, 255));
+    // escala em por cento, guardada como inteiro. Clamp evita um valor absurdo
+    // salvo no registro encolher ou explodir a barra.
+    g_escala     = Clamp(Wh_GetIntSetting(L"Escala", 100), 60, 200) / 100.0;
+    // ---- tema --------------------------------------------------------------
+    // As três cores soltas são lidas sempre; o tema por cima delas decide se
+    // elas valem (Personalizado) ou se são substituídas pela paleta pronta.
+    g_corBase  = LerCor(L"CorFundo",     L"#0A0D12");
+    g_corLinha = LerCor(L"CorLinha",     L"#FFFFFF");
+    g_corDiv   = LerCor(L"CorDivisoria", L"#FFFFFF");
+    g_tema     = Clamp(Wh_GetIntSetting(L"Tema", 1), 0, (int)_countof(kTemas) - 1);
+    AplicarTema();
     g_todasAreas = Wh_GetIntSetting(L"MostrarSempreVisivel", 1) != 0;
+
+    // ---- posição -----------------------------------------------------------
+    g_vertical     = Wh_GetIntSetting(L"Vertical", 0) != 0;
+    g_colarBordas  = Wh_GetIntSetting(L"ColarBordas", 1) != 0;
+    g_travado      = Wh_GetIntSetting(L"TravarLugar", 0) != 0;
+    g_manterNaArea = Wh_GetIntSetting(L"ManterNaArea", 1) != 0;
 
     PCWSTR s = Wh_GetStringSetting(L"PastaOpenCode");
     g_pastaOpenCode = (s && *s) ? s : L"H:\\DS CREATIVE";
@@ -258,11 +443,164 @@ static void CarregarConfig() {
     // barra fica só com os ícones desenhados em código (Sistema e Mídia).
     g_pastaIcones = Expandir((s && *s) ? s : L"%USERPROFILE%\\windhawk-bar-ds-creative\\icons");
     Wh_FreeStringSetting(s);
+
+    // ---- atalhos do usuário ------------------------------------------------
+    // Formato: Nome | Caminho  (o terceiro campo é opcional e diz de onde
+    // tirar o ícone). Se só houver um campo, ele é o caminho e o nome sai do
+    // próprio arquivo. Assim funciona tanto "Blender | D:\...\blender.exe"
+    // quanto só "D:\...\blender.exe".
+    g_atalhos.clear();
+    for (int i = 1; i <= 8; i++) {
+        wchar_t chave[24]{};
+        wsprintfW(chave, L"Atalho%d", i);
+        PCWSTR v = Wh_GetStringSetting(chave);
+        std::wstring texto = (v && *v) ? v : L"";
+        Wh_FreeStringSetting(v);
+        if (texto.empty()) continue;
+
+        std::wstring campo[3];
+        int qual = 0;
+        for (wchar_t c : texto) {
+            if (c == L'|') { if (qual < 2) qual++; continue; }
+            campo[qual] += c;
+        }
+        for (int k = 0; k < 3; k++) campo[k] = Aparar(campo[k]);
+
+        AtalhoUser a;
+        if (campo[1].empty()) {
+            a.alvo = Expandir(campo[0]);
+            size_t barra = a.alvo.find_last_of(L"\\/");
+            a.nome = (barra == std::wstring::npos) ? a.alvo : a.alvo.substr(barra + 1);
+            size_t ponto = a.nome.find_last_of(L'.');
+            if (ponto != std::wstring::npos) a.nome = a.nome.substr(0, ponto);
+        } else {
+            a.nome    = campo[0];
+            a.alvo    = Expandir(campo[1]);
+            a.iconeDe = Expandir(campo[2]);
+        }
+        if (a.alvo.empty()) continue;
+        g_atalhos.push_back(a);
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Ícones: PNG carregados da pasta configurada (o mod não embute marca nenhuma)
 // ---------------------------------------------------------------------------
+
+// Converte um HICON em bitmap GDI+ 32bpp com canal alfa de verdade.
+//
+// O caminho óbvio — desenhar o ícone num DIB zerado e pronto — falha com
+// ícones antigos, que não têm canal alfa: o resultado fica 100% transparente e
+// o botão some da barra. Aqui o ícone é desenhado DUAS vezes, sobre preto e
+// sobre branco, e o alfa sai da diferença entre os dois:
+//
+//   preto  = cor * a
+//   branco = cor * a + 255 * (1 - a)
+//   branco - preto = 255 * (1 - a)   ->   a = (255 - (branco - preto)) / 255
+//
+// Vale para os dois casos: ícone com alfa e ícone com máscara. Para ícone com
+// máscara, onde ele é transparente as duas cópias continuam preto e branco
+// puras, então a diferença dá 255 e o alfa dá 0 — exatamente o certo.
+static Gdiplus::Bitmap* IconeParaBitmap(HICON icone, int lado) {
+    using namespace Gdiplus;
+    if (!icone) return nullptr;
+
+    // sem tamanho informado, usa o tamanho real do ícone: nada de esticar
+    if (lado < 4) {
+        ICONINFO ii{};
+        if (GetIconInfo(icone, &ii)) {
+            BITMAP bm{};
+            if (ii.hbmColor && GetObject(ii.hbmColor, sizeof(bm), &bm)) lado = bm.bmWidth;
+            else if (ii.hbmMask && GetObject(ii.hbmMask, sizeof(bm), &bm)) lado = bm.bmWidth;
+            if (ii.hbmColor) DeleteObject(ii.hbmColor);
+            if (ii.hbmMask)  DeleteObject(ii.hbmMask);
+        }
+    }
+    if (lado < 4 || lado > 512) lado = 32;
+
+    BITMAPINFO bmi{};
+    bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth       = lado;
+    bmi.bmiHeader.biHeight      = -lado;   // top-down, igual ao GDI+
+    bmi.bmiHeader.biPlanes      = 1;
+    bmi.bmiHeader.biBitCount    = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    HDC tela = GetDC(nullptr);
+    if (!tela) return nullptr;
+
+    DWORD* preto  = nullptr;
+    DWORD* branco = nullptr;
+    HBITMAP dibPreto  = CreateDIBSection(tela, &bmi, DIB_RGB_COLORS, (void**)&preto,  nullptr, 0);
+    HBITMAP dibBranco = CreateDIBSection(tela, &bmi, DIB_RGB_COLORS, (void**)&branco, nullptr, 0);
+    ReleaseDC(nullptr, tela);
+    if (!dibPreto || !dibBranco || !preto || !branco) {
+        if (dibPreto)  DeleteObject(dibPreto);
+        if (dibBranco) DeleteObject(dibBranco);
+        return nullptr;
+    }
+
+    const size_t total = (size_t)lado * lado;
+    for (size_t i = 0; i < total; i++) { preto[i] = 0xFF000000; branco[i] = 0xFFFFFFFF; }
+
+    HDC mem = CreateCompatibleDC(nullptr);
+    if (mem) {
+        HGDIOBJ antigo = SelectObject(mem, dibPreto);
+        DrawIconEx(mem, 0, 0, icone, lado, lado, 0, nullptr, DI_NORMAL);
+        SelectObject(mem, dibBranco);
+        DrawIconEx(mem, 0, 0, icone, lado, lado, 0, nullptr, DI_NORMAL);
+        SelectObject(mem, antigo);
+        DeleteDC(mem);
+    }
+
+    BYTE* saida = (BYTE*)preto;   // reaproveita o buffer do preto
+    for (size_t i = 0; i < total; i++) {
+        const BYTE* pp = (const BYTE*)preto  + i * 4;
+        const BYTE* pb = (const BYTE*)branco + i * 4;
+        int dB = pb[0] - pp[0];
+        int dG = pb[1] - pp[1];
+        int dR = pb[2] - pp[2];
+        int d  = (dB + dG + dR) / 3;
+        int a  = 255 - d;
+        if (a < 0) a = 0;
+        if (a > 255) a = 255;
+        BYTE R = pp[2], G = pp[1], B = pp[0];
+        if (a > 0) {
+            // desfaz a multiplicação do alfa: a cor real é a do preto dividida
+            int r = (pp[2] * 255) / a; if (r > 255) r = 255;
+            int g = (pp[1] * 255) / a; if (g > 255) g = 255;
+            int b = (pp[0] * 255) / a; if (b > 255) b = 255;
+            R = (BYTE)r; G = (BYTE)g; B = (BYTE)b;
+        }
+        saida[i * 4 + 0] = B;
+        saida[i * 4 + 1] = G;
+        saida[i * 4 + 2] = R;
+        saida[i * 4 + 3] = (BYTE)a;
+    }
+
+    Bitmap* temp  = new Bitmap(lado, lado, lado * 4, PixelFormat32bppARGB, (BYTE*)preto);
+    Bitmap* copia = nullptr;
+    if (temp && temp->GetLastStatus() == Ok)
+        copia = temp->Clone(0, 0, lado, lado, PixelFormat32bppARGB);
+    delete temp;
+    DeleteObject(dibPreto);
+    DeleteObject(dibBranco);
+    return copia;
+}
+
+// Pega o ícone REAL do próprio arquivo — .exe, .dll, atalho ou pasta, o que o
+// Windows mostraria no Explorer. Mesmo princípio dos ícones fixos da barra:
+// nada desenhado à mão, nada inventado.
+static Gdiplus::Bitmap* CarregarIconeDoArquivo(const std::wstring& caminho) {
+    if (caminho.empty()) return nullptr;
+    SHFILEINFOW sfi{};
+    if (!SHGetFileInfoW(caminho.c_str(), 0, &sfi, sizeof(sfi),
+                        SHGFI_ICON | SHGFI_LARGEICON))
+        return nullptr;
+    Gdiplus::Bitmap* bmp = IconeParaBitmap(sfi.hIcon, 0);
+    DestroyIcon(sfi.hIcon);
+    return bmp;
+}
 
 static void LiberarIcones() {
     for (auto& kv : g_icons) delete kv.second;
@@ -271,6 +609,19 @@ static void LiberarIcones() {
 
 static void CarregarIcones() {
     LiberarIcones();
+
+    // ícones dos atalhos do usuário primeiro: como saem do próprio arquivo
+    // apontado, funcionam mesmo sem nenhuma pasta de ícones configurada
+    for (size_t i = 0; i < g_atalhos.size(); i++) {
+        wchar_t chave[24]{};
+        wsprintfW(chave, L"user%u", (unsigned)i);
+        const AtalhoUser& a = g_atalhos[i];
+        const std::wstring& de = a.iconeDe.empty() ? a.alvo : a.iconeDe;
+        if (GetFileAttributesW(de.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        if (Gdiplus::Bitmap* b = CarregarIconeDoArquivo(de))
+            g_icons[chave] = b;
+    }
+
     if (g_pastaIcones.empty()) return;
 
     static const wchar_t* chaves[] = {
@@ -700,20 +1051,46 @@ static void Midia(WORD vk, int appcmd) {
 // Layout
 // ---------------------------------------------------------------------------
 
-static const int SLOT        = 30;   // lado de cada botão
-static const int PAD_X       = 8;
-static const int PAD_Y       = 7;
-static const int GAP         = 3;
-static const int SEP_W       = 1;
-static const int SEP_H       = 18;
-static const int SEP_MARGEM  = 5;
-static const int RAIO        = 10;   // cantos arredondados da barra
+// Os valores abaixo são o desenho original, medido em 100%. Deixaram de ser
+// constantes de compilação porque a escala os recalcula em tempo de execução —
+// assim todo o layout acompanha, sem uma segunda tabela de medidas.
+static int SLOT        = 30;   // lado de cada botão
+static int PAD_X       = 8;
+static int PAD_Y       = 7;
+static int GAP         = 3;
+static int SEP_W       = 1;
+static int SEP_H       = 18;
+static int SEP_MARGEM  = 5;
+static int RAIO        = 10;   // cantos arredondados da barra
 
-static const int PANEL_TILE  = 40;
-static const int PANEL_GAP   = 4;
-static const int PANEL_PAD   = 9;
-static const int PANEL_LABEL = 14;
-static const int PANEL_RAIO  = 12;
+static int PANEL_TILE  = 40;
+static int PANEL_GAP   = 4;
+static int PANEL_PAD   = 9;
+static int PANEL_LABEL = 14;
+static int PANEL_RAIO  = 12;
+
+// arredonda para o inteiro mais próximo e nunca deixa chegar a zero: um
+// espaçamento de 0px colaria os botões e uma espessura de 0px sumiria da tela
+static int Esc(int base) {
+    int v = (int)(base * g_escala + 0.5);
+    return v < 1 ? 1 : v;
+}
+
+static void CalcularLayout() {
+    SLOT        = Esc(30);
+    PAD_X       = Esc(8);
+    PAD_Y       = Esc(7);
+    GAP         = Esc(3);
+    SEP_W       = Esc(1);
+    SEP_H       = Esc(18);
+    SEP_MARGEM  = Esc(5);
+    RAIO        = Esc(10);
+    PANEL_TILE  = Esc(40);
+    PANEL_GAP   = Esc(4);
+    PANEL_PAD   = Esc(9);
+    PANEL_LABEL = Esc(14);
+    PANEL_RAIO  = Esc(12);
+}
 
 static std::vector<int> g_seps;      // posição X (centro) de cada divisória
 
@@ -746,6 +1123,7 @@ struct Grupo {
 static std::vector<Grupo> g_grupos;
 
 static void MonteBarra() {
+    CalcularLayout();
     g_buttons.clear();
     g_seps.clear();
     g_grupos.clear();
@@ -781,6 +1159,21 @@ static void MonteBarra() {
     AddIcon(g_buttons, L"notepad", [] {
         AbrirShell(L"C:\\Windows\\System32\\notepad.exe"); });
 
+    // --- C2: atalhos do usuário ---
+    // Se o ícone real foi extraído, usa ele. Se não, cai num traço fino de
+    // "abrir" — melhor um botão discreto do que um botão invisível.
+    size_t c1 = g_buttons.size();
+    for (size_t i = 0; i < g_atalhos.size(); i++) {
+        wchar_t chave[24]{};
+        wsprintfW(chave, L"user%u", (unsigned)i);
+        const std::wstring alvo = g_atalhos[i].alvo;
+        if (g_icons.find(chave) != g_icons.end())
+            AddIcon(g_buttons, chave, [alvo] { AbrirShell(alvo); });
+        else
+            AddLine(g_buttons, LI_USER, [alvo] { AbrirShell(alvo); });
+    }
+    size_t c2 = g_buttons.size();
+
     // --- D: sistema ---
     size_t d0 = g_buttons.size();
     AddLine(g_buttons, LI_TRASH, [] { EsvaziarLixeira(); });
@@ -797,29 +1190,41 @@ static void MonteBarra() {
 
     g_grupos.push_back({ L"OpenCode", a0, b0 });
     g_grupos.push_back({ L"Adobe",    b0, c0 });
-    g_grupos.push_back({ L"Favoritos", c0, d0 });
+    g_grupos.push_back({ L"Favoritos", c0, c1 });
+    if (c2 > c1) g_grupos.push_back({ L"Meus atalhos", c1, c2 });
     g_grupos.push_back({ L"Sistema",  d0, e0 });
     g_grupos.push_back({ L"Mídia",    e0, fim });
 
     // --- posicionamento ---
-    int x = PAD_X;
+    // Deitada ou em pé, é a mesma conta com x trocado por y. g_seps guarda a
+    // posição da divisória no eixo em que a barra cresce, então o desenho das
+    // divisórias também acompanha sem uma segunda tabela de medidas.
+    int avanco = PAD_X;
     for (size_t gi = 0; gi < g_grupos.size(); gi++) {
         const Grupo& gr = g_grupos[gi];
         for (size_t i = gr.inicio; i < gr.fim; i++) {
             auto& b = g_buttons[i];
-            b.rc = { x, PAD_Y, x + SLOT, PAD_Y + SLOT };
-            x += SLOT;
-            if (i + 1 < gr.fim) x += GAP;
+            if (!g_vertical)
+                b.rc = { avanco, PAD_Y, avanco + SLOT, PAD_Y + SLOT };
+            else
+                b.rc = { PAD_X, avanco, PAD_X + SLOT, avanco + SLOT };
+            avanco += SLOT;
+            if (i + 1 < gr.fim) avanco += GAP;
         }
         if (gi + 1 < g_grupos.size()) {
-            x += SEP_MARGEM;
-            g_seps.push_back(x);
-            x += SEP_W + SEP_MARGEM;
+            avanco += SEP_MARGEM;
+            g_seps.push_back(avanco);
+            avanco += SEP_W + SEP_MARGEM;
         }
     }
 
-    g_barW = x + PAD_X;
-    g_barH = PAD_Y * 2 + SLOT;
+    if (!g_vertical) {
+        g_barW = avanco + PAD_X;
+        g_barH = PAD_Y * 2 + SLOT;
+    } else {
+        g_barW = PAD_X * 2 + SLOT;
+        g_barH = avanco + PAD_Y;
+    }
 
     // índice do Creative Cloud, para posicionar o painel acima dele
     g_idxAdobe = -1;
@@ -923,9 +1328,25 @@ static void DesenharFundo(Gdiplus::Graphics& g, int w, int h, int rv) {
     GraphicsState st = g.Save();
 
     if (tex) {
+        // A textura é gerada em cima de uma base escura fixa (13,17,23). Aqui
+        // ela é reescalada para a cor base do tema. No tema Escuro a base do
+        // tema é a própria base da textura, então k = 1 e o desenho sai
+        // exatamente como sempre saiu — os outros temas só puxam a textura
+        // para o tom deles, sem perder o relevo.
+        const double TR = 13, TG = 17, TB = 23;
+        const double br = GetRValue(g_corBase);
+        const double bg = GetGValue(g_corBase);
+        const double bb = GetBValue(g_corBase);
+        double dist = (std::max)({ std::fabs(br - TR), std::fabs(bg - TG), std::fabs(bb - TB) });
+        double k = 1.0 - dist / 255.0;
+        if (k < 0.25) k = 0.25;
+
         ColorMatrix cm{};
-        cm.m[0][0] = 1; cm.m[1][1] = 1; cm.m[2][2] = 1;
+        cm.m[0][0] = (REAL)k; cm.m[1][1] = (REAL)k; cm.m[2][2] = (REAL)k;
         cm.m[3][3] = efetivo;
+        cm.m[4][0] = (REAL)((br - k * TR) / 255.0);
+        cm.m[4][1] = (REAL)((bg - k * TG) / 255.0);
+        cm.m[4][2] = (REAL)((bb - k * TB) / 255.0);
         cm.m[4][4] = 1;
         ImageAttributes ia;
         ia.SetColorMatrix(&cm, ColorMatrixFlagsDefault, ColorAdjustTypeBitmap);
@@ -933,10 +1354,11 @@ static void DesenharFundo(Gdiplus::Graphics& g, int w, int h, int rv) {
                     UnitPixel, &ia);
     } else {
         BYTE a = (BYTE)(efetivo * 255);
-        SolidBrush br(Color(a, 10, 13, 18));
+        SolidBrush solido(Color(a, GetRValue(g_corBase),
+                                GetGValue(g_corBase), GetBValue(g_corBase)));
         GraphicsPath path;
         AddRaio(path, RectF(0, 0, (REAL)w, (REAL)h), (REAL)RAIO);
-        g.FillPath(&br, &path);
+        g.FillPath(&solido, &path);
     }
     g.Restore(st);
 }
@@ -1065,7 +1487,8 @@ static void DesenharIcone(Gdiplus::Graphics& g, const RECT& rc, const std::wstri
 
     int w = rc.right - rc.left;
     int h = rc.bottom - rc.top;
-    int lado = (std::min)(w, h) - 6;
+    // 6px de folga em 30px de botão = 20%, proporcional na escala
+    int lado = (int)((std::min)(w, h) * 0.8f + 0.5f);
     if (lado < 4) return;
 
     RectF dest((REAL)(rc.left + (w - lado) / 2.0f),
@@ -1082,7 +1505,8 @@ static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone) {
     int w = rc.right - rc.left;
     int h = rc.bottom - rc.top;
 
-    const REAL ALVO = 20.0f;
+    // 20px de alvo dentro de um botão de 30px no desenho original
+    const REAL ALVO = (REAL)SLOT * (20.0f / 30.0f);
     REAL s = ALVO / 24.0f;
     REAL ox = (REAL)rc.left + (w - ALVO) / 2;
     REAL oy = (REAL)rc.top + (h - ALVO) / 2;
@@ -1093,10 +1517,15 @@ static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone) {
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetPixelOffsetMode(PixelOffsetModeHalf);
 
-    Pen p(Color(235, 255, 255, 255), 1.8f);   // 1.8 × (20/24) = 1,5px finais
+    // a cor vem do tema: no tema Claro os traços ficam escuros, senão sumiriam
+    const BYTE LR = GetRValue(g_corLinha);
+    const BYTE LG = GetGValue(g_corLinha);
+    const BYTE LB = GetBValue(g_corLinha);
+
+    Pen p(Color(235, LR, LG, LB), 1.8f);   // 1.8 × (20/24) = 1,5px finais
     p.SetLineCap(LineCapRound, LineCapRound, DashCapRound);
     p.SetLineJoin(LineJoinRound);
-    SolidBrush furo(Color(235, 255, 255, 255));
+    SolidBrush furo(Color(235, LR, LG, LB));
 
     switch (icone) {
     case LI_TRASH: {
@@ -1168,6 +1597,25 @@ static void DesenharLinha(Gdiplus::Graphics& g, const RECT& rc, int icone) {
         g.DrawLine(&p, 19, 5, 19, 19);
         break;
     }
+    case LI_USER: {
+        // caixa com a ponta saindo: "abrir isto"
+        GraphicsPath caixa;
+        caixa.StartFigure();
+        caixa.AddLine(4, 10, 4, 20);
+        caixa.AddLine(4, 20, 14, 20);
+        caixa.AddLine(14, 20, 14, 10);
+        caixa.AddLine(14, 10, 4, 10);
+        g.DrawPath(&p, &caixa);
+
+        g.DrawLine(&p, 12, 12, 20, 4);
+
+        GraphicsPath ponta;
+        ponta.StartFigure();
+        ponta.AddLine(14, 4, 20, 4);
+        ponta.AddLine(20, 4, 20, 10);
+        g.DrawPath(&p, &ponta);
+        break;
+    }
     default:
         break;
     }
@@ -1180,8 +1628,14 @@ static void DesenharDivisorias(Gdiplus::Graphics& g) {
     using namespace Gdiplus;
     if (g_seps.empty()) return;
     Pen p(Color(90, GetRValue(g_corDiv), GetGValue(g_corDiv), GetBValue(g_corDiv)), 1.0f);
-    int topo = PAD_Y + (SLOT - SEP_H) / 2;
-    for (int x : g_seps) g.DrawLine(&p, x, topo, x, topo + SEP_H);
+    if (!g_vertical) {
+        int topo = PAD_Y + (SLOT - SEP_H) / 2;
+        for (int x : g_seps) g.DrawLine(&p, x, topo, x, topo + SEP_H);
+    } else {
+        // em pé a divisória também gira: vira uma linha deitada
+        int esq = PAD_X + (SLOT - SEP_H) / 2;
+        for (int y : g_seps) g.DrawLine(&p, esq, y, esq + SEP_H, y);
+    }
 }
 
 // rotina principal da barra
@@ -1203,17 +1657,24 @@ static void PintarBarra(Gdiplus::Graphics& g, int w, int h) {
 // rotina do painel do Adobe (visível só quando aberto, então sempre opaco)
 static void PintarPainel(Gdiplus::Graphics& g, int w, int h) {
     using namespace Gdiplus;
-    SolidBrush fundo(Color(238, 9, 12, 17));
+    const BYTE LR = GetRValue(g_corLinha);
+    const BYTE LG = GetGValue(g_corLinha);
+    const BYTE LB = GetBValue(g_corLinha);
+
+    // o painel é a cor da barra um pouco mais funda, como sombra por baixo
+    SolidBrush fundo(Color(238, (BYTE)(GetRValue(g_corBase) * 0.85),
+                                (BYTE)(GetGValue(g_corBase) * 0.85),
+                                (BYTE)(GetBValue(g_corBase) * 0.85)));
     GraphicsPath base;
     AddRaio(base, RectF(0, 0, (REAL)w, (REAL)h), (REAL)PANEL_RAIO);
     g.FillPath(&fundo, &base);
 
-    Pen borda(Color(40, 255, 255, 255), 1.0f);
+    Pen borda(Color(40, LR, LG, LB), 1.0f);
     g.DrawPath(&borda, &base);
 
     FontFamily fam(L"Segoe UI");
-    Font rot(&fam, 8.0f, FontStyleRegular, UnitPixel);
-    SolidBrush corRot(Color(170, 255, 255, 255));
+    Font rot(&fam, 8.0f * (REAL)g_escala, FontStyleRegular, UnitPixel);
+    SolidBrush corRot(Color(170, LR, LG, LB));
     StringFormat sf;
     sf.SetAlignment(StringAlignmentCenter);
 
@@ -1227,8 +1688,10 @@ static void PintarPainel(Gdiplus::Graphics& g, int w, int h) {
 
         if (i < _countof(rotulos)) {
             REAL cx = (REAL)((b.rc.left + b.rc.right) / 2.0f);
-            REAL top = (REAL)b.rc.bottom + 4;
-            g.DrawString(rotulos[i], -1, &rot, RectF(cx - 40, top, 80, (REAL)PANEL_LABEL),
+            REAL top = (REAL)b.rc.bottom + (REAL)PANEL_GAP;
+            g.DrawString(rotulos[i], -1, &rot,
+                         RectF(cx - 40 * (REAL)g_escala, top,
+                               80 * (REAL)g_escala, (REAL)PANEL_LABEL),
                          &sf, &corRot);
         }
     }
@@ -1342,8 +1805,9 @@ static POINT g_origemJanela{};
 // WM_MOUSEMOVE, que só começa depois de 4px de movimento: clicar em qualquer
 // ponto acerta um botão e arrastar continua funcionando.
 static Button* BotaoMaisProximo(std::vector<Button>& v, const POINT& pt) {
-    const int TOL_X = 3;   // cobre os 3px de gap
-    const int TOL_Y = 8;   // abre na vertical até as bordas da barra
+    // ambos derivam do layout, então continuam corretos em qualquer escala:
+    const int TOL_X = g_vertical ? (PAD_X + 1) : GAP;
+    const int TOL_Y = g_vertical ? GAP : (PAD_Y + 1);
     for (auto& b : v)
         if (pt.x >= b.rc.left - TOL_X && pt.x <= b.rc.right + TOL_X &&
             pt.y >= b.rc.top - TOL_Y && pt.y <= b.rc.bottom + TOL_Y)
@@ -1372,6 +1836,15 @@ static void AbrirPainel() {
     int px = (tl.x + br.x) / 2 - pw / 2;
     int py = tl.y - ph - 8;
 
+    if (g_vertical) {
+        // em pé não sobra espaço em cima: o painel sai para o lado que tiver
+        // folga e, se não couber em nenhum, fica à direita mesmo
+        RECT work{};
+        SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+        px = (br.x + 8 + pw <= work.right) ? (br.x + 8) : (tl.x - pw - 8);
+        py = (tl.y + br.y) / 2 - ph / 2;
+    }
+
     g_panel = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
                               kClassePainel, L"Adobe", WS_POPUP,
                               px, py, pw, ph, g_hwnd, nullptr, g_hInst, nullptr);
@@ -1379,6 +1852,47 @@ static void AbrirPainel() {
 
     ShowWindow(g_panel, SW_SHOWNOACTIVATE);
     Compor(g_panel, pw, ph, true);
+}
+
+// Encosta a barra na borda da área de trabalho mais próxima, quando ela foi
+// solta perto o bastante. O limite é generoso de propósito: a ideia é que
+// "quase na borda" já vire "na borda", sem exigir acertar no pixel.
+static void ColarNaBorda(int& x, int& y) {
+    if (!g_colarBordas || !g_hwnd) return;
+
+    RECT r{ x, y, x + g_barW, y + g_barH };
+    HMONITOR mon = MonitorFromRect(&r, MONITOR_DEFAULTTONEAREST);
+    if (!mon) return;
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(mon, &mi)) return;
+    const RECT& w = mi.rcWork;
+
+    const int MARGEM = 28;   // em pixels de tela, não acompanha a escala
+
+    if (x - w.left <= MARGEM)                   x = w.left;
+    else if (w.right - (x + g_barW) <= MARGEM)  x = w.right - g_barW;
+
+    if (y - w.top <= MARGEM)                    y = w.top;
+    else if (w.bottom - (y + g_barH) <= MARGEM) y = w.bottom - g_barH;
+}
+
+// Empurra a barra de volta para dentro da área de trabalho. Cobre o caso de a
+// resolução mudar ou um monitor ser desconectado com a barra salva fora: sem
+// isso ela ficaria inalcançável até alguém editar o registro na mão.
+static void PrenderNaArea(int& x, int& y) {
+    RECT r{ x, y, x + g_barW, y + g_barH };
+    HMONITOR mon = MonitorFromRect(&r, MONITOR_DEFAULTTONEAREST);
+    if (!mon) return;
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(mon, &mi)) return;
+    const RECT& w = mi.rcWork;
+
+    if (x + g_barW > w.right)  x = w.right - g_barW;
+    if (y + g_barH > w.bottom) y = w.bottom - g_barH;
+    if (x < w.left) x = w.left;
+    if (y < w.top)  y = w.top;
 }
 
 static void PosicionarBarra() {
@@ -1408,6 +1922,10 @@ static void PosicionarBarra() {
         x = work.left + ((work.right - work.left) - g_barW) / 2;
         y = work.top + 28;
     }
+
+    // "manter sempre na área de trabalho": no fim das contas a barra precisa
+    // estar dentro da tela, não importa o que estava salvo nem o tamanho novo
+    if (g_manterNaArea) PrenderNaArea(x, y);
 
     SetWindowPos(g_hwnd, HWND_TOPMOST, x, y, g_barW, g_barH,
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -1439,6 +1957,7 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     case WM_MOUSEMOVE: {
         if (GetCapture() != hwnd) break;
+        if (g_travado) return 0;   // travar no lugar: o clique continua de pé
         POINT agora{};
         GetCursorPos(&agora);
         int dx = agora.x - g_origemMouse.x;
@@ -1464,7 +1983,13 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (arrastou) {
             RECT r{};
             GetWindowRect(hwnd, &r);
-            SalvarPosicao(r.left, r.top);
+            int nx = r.left, ny = r.top;
+            ColarNaBorda(nx, ny);                  // encosta, se soltou perto
+            if (g_manterNaArea) PrenderNaArea(nx, ny);
+            if (nx != r.left || ny != r.top)
+                SetWindowPos(hwnd, HWND_TOPMOST, nx, ny, 0, 0,
+                             SWP_NOSIZE | SWP_NOACTIVATE);
+            SalvarPosicao(nx, ny);
         } else if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
             if (b->onClick) b->onClick();
         }
@@ -1473,6 +1998,16 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     case WM_CAPTURECHANGED:
         g_arrastando = false;
+        return 0;
+
+    case WM_DISPLAYCHANGE:
+        if (g_manterNaArea) PosicionarBarra();
+        return 0;
+
+    case WM_SETTINGCHANGE:
+        // só interessa quando a área de trabalho em si muda — barra de tarefas
+        // mudou de tamanho ou de lado — não qualquer ajuste do sistema
+        if (wp == SPI_SETWORKAREA && g_manterNaArea) PosicionarBarra();
         return 0;
 
     case WM_TIMER: {

@@ -2,7 +2,8 @@
 
 # 🛠️ Barra DS Creative
 
-**Uma barra de lançamento horizontal, minimalista e de flutuação livre para o Windows 11.**
+**Uma barra de lançamento minimalista e de flutuação livre para o Windows 11.**
+Deitada ou em pé, do tamanho que você quiser, na cor que você escolher.
 
 Feita como mod do [Windhawk](https://windhawk.org). Sem emoji, sem firula —
 só traços finos, ícones originais e atalhos onde importam.
@@ -15,7 +16,7 @@ só traços finos, ícones originais e atalhos onde importam.
 
 ## O que ela faz
 
-Uma única linha flutuando sobre a área de trabalho, com **20 atalhos** divididos
+Uma única linha flutuando sobre a área de trabalho, com **19 atalhos** divididos
 em grupos por linhas de 1px:
 
 ```
@@ -25,16 +26,27 @@ em grupos por linhas de 1px:
 | Grupo | Conteúdo |
 |---|---|
 | **OpenCode** | Abre o Windows Terminal na sua pasta de projeto e retoma a última sessão |
-| **Adobe** | Um botão só — o Creative Cloud abre um painel **acima** com Photoshop, Illustrator, After Effects, Premiere e Lightroom |
+| **Adobe** | Um botão só — o Creative Cloud abre um painel com Photoshop, Illustrator, After Effects, Premiere e Lightroom |
 | **Favoritos** | Navegadores, mensageiros e ferramentas do dia a dia |
+| **Meus atalhos** | Até 8 programas seus. O grupo só aparece quando você preenche algum |
 | **Sistema** | Esvaziar lixeira, bloquear, desligar |
 | **Mídia** | Anterior, tocar/pausar, próxima — funciona com qualquer player |
 
+### Deitada ou em pé
+
+A barra deitada mede **672×44**. Em pé mede **46×671** — a mesma barra com os
+eixos trocados, e os separadores deitam junto. Medido com o mod rodando, não
+estimado.
+
+Em pé, o painel do Creative Cloud abre **ao lado** da barra em vez de abrir
+acima: em pé não sobra espaço vertical, e o painel seria cortado pela borda da
+tela.
+
 ### O fundo fica
 
-A barra tem fundo **sempre visível**, com a textura e a opacidade que você
-escolher. Passar o mouse por cima **não muda nada** — nem a opacidade, nem o
-desenho.
+A barra tem fundo **sempre visível**, com o tema, a textura e a opacidade que
+você escolher. Passar o mouse por cima **não muda nada** — nem a opacidade, nem
+o desenho.
 
 ### Clique em qualquer lugar, arraste segurando
 
@@ -55,9 +67,67 @@ a posição e volta para o mesmo lugar depois de reiniciar o explorer.
 O Windhawk gera a tela de controle automaticamente. Tudo aplica **em tempo real**,
 sem reiniciar nada.
 
+### Temas de cor
+
+Cada tema é um trio: cor do fundo, cor dos traços e cor da divisória. Trocar o
+tema troca a barra inteira de uma vez.
+
+| | | |
+|---|---|---|
+| **Personalizado** — usa as três cores soltas dos ajustes | **Escuro** — o visual de sempre | **Preto total** |
+| **Grafite** | **Ardósia** | **Verde-noite** |
+| **Vinho** | **Âmbar** | **Claro** |
+| **Papel** | | |
+
+Nos temas claros os **traços dos ícones ficam escuros**. Não é enfeite: traço
+branco sobre fundo claro some. Medido — no tema Claro o fundo sai em `76,76,76` e
+o traço mais escuro em `17`; no tema Preto total o fundo sai em `7,7,7` e o
+traço mais claro em `255`.
+
+As três cores do tema Personalizado aceitam `#RRGGBB` ou `RRGGBB`. Escrita
+errada não quebra nada: cai no padrão.
+
+### Escala da barra
+
+De **70% a 150%**, em sete degraus. Muda tudo junto — botões, ícones, cantos,
+espaçamentos e a área de clique. Os ícones de traço fino são desenhados de novo
+no tamanho certo, então não ficam borrados.
+
+### Atalhos personalizados
+
+Até **8 programas seus**. Em cada campo, escreva:
+
+```
+Nome | C:\Caminho\do\programa.exe
+```
+
+O terceiro campo é opcional e diz de onde tirar o ícone, quando o `.exe` não tem
+um bom:
+
+```
+Nome | C:\Caminho\programa.exe | C:\Outro\icone.exe
+```
+
+Se você escrever **só o caminho**, o nome sai do próprio arquivo. E o ícone é
+**extraído do programa de verdade** — nada de ícone desenhado. Se a extração
+falhar, aparece um marcador de contorno fino, para o botão nunca ficar invisível.
+
+### Posição
+
+| Ajuste | O que faz |
+|---|---|
+| **Barra em pé** | Deita ou levanta a barra inteira |
+| **Colar nas bordas** | Ao soltar, a barra encosta na borda mais próxima (28px de margem). Arrastar além da borda também encosta |
+| **Travar no lugar** | A barra não sai do lugar. O clique continua funcionando normalmente |
+| **Manter na área de trabalho** | A barra nunca fica fora da área visível. Vale também quando a resolução muda ou um monitor é desconectado |
+
+Se você travar a barra fora da tela, ligar **Manter na área de trabalho** traz ela
+de volta.
+
 ### 10 texturas procedurais
 
-Desenhadas em GDI+ na hora — sem arquivo de imagem, quase nada de peso.
+Desenhadas em GDI+ na hora — sem arquivo de imagem, quase nada de peso. Todas
+acompanham a cor do tema escolhido.
 
 | | | | |
 |---|---|---|---|
@@ -72,7 +142,7 @@ sempre em 100%, então a barra nunca perde legibilidade por estar transparente.
 
 ### Mais
 
-- Cor da linha divisória
+- Cor do fundo, dos traços e da divisória (no tema Personalizado)
 - Mostrar em todas as áreas de trabalho
 - Pasta de trabalho do OpenCode
 - Pasta de ícones
@@ -119,7 +189,7 @@ Ciano do preset: `#00EFFF` luz · `#83FFF5` pixels · `#00DFFF` halo.
 
 ## Ícones
 
-Este repositório **não distribui nenhum ícone**. Os 20 ícones são marcas
+Este repositório **não distribui nenhum ícone**. Os ícones dos programas são marcas
 registradas da Adobe, Google, Meta, Telegram, Perplexity e de outros.
 
 Cada pessoa extrai os ícones **dos programas que já estão instalados na máquina
@@ -137,6 +207,9 @@ O script:
 - Remove o fundo branco só onde ele encosta na borda — preservando os glifos
   internos, como a letra do Photoshop e o telefone do WhatsApp
 - Gera `icons\` e `icons\b64.txt`
+
+Os **atalhos personalizados** não passam por esse script: o mod lê o ícone direto
+do arquivo que você apontar.
 
 ---
 
@@ -157,6 +230,9 @@ O script:
   se o programa sumir, o botão não acha
 - **Maple Bookmarks** é extensão de navegador — o botão abre a página da loja
 - **Desligar** pede confirmação, e o Windows mostra aviso de UAC
+- **Manter na área de trabalho** com o **colar nas bordas** desligado é a única
+  combinação que deixa a barra sair da tela. É de propósito: é o que permite
+  encostar metade dela fora, se você quiser
 
 ---
 
