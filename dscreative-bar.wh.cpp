@@ -2291,10 +2291,10 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             // arraste).
             POINT agora{};
             GetCursorPos(&agora);
-            bool mexeu = temAperto &&
+            bool mexeu =
                 (agora.x - g_origemMouse.x > 4 || agora.x - g_origemMouse.x < -4 ||
                  agora.y - g_origemMouse.y > 4 || agora.y - g_origemMouse.y < -4);
-            if (!mexeu) {
+            if (temAperto && !mexeu) {
                 if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
                     if (b->onClick) b->onClick();
                 }
