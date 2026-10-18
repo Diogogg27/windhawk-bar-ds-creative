@@ -136,9 +136,17 @@ falhar, aparece um marcador de contorno fino, para o botão nunca ficar invisív
 | **Colar nas bordas** | Ao soltar, a barra encosta na borda mais próxima (28px de margem). Arrastar além da borda também encosta |
 | **Travar no lugar** | A barra não sai do lugar. O clique continua funcionando normalmente |
 | **Manter na área de trabalho** | A barra nunca fica fora da área visível. Vale também quando a resolução muda ou um monitor é desconectado |
+| **Ficar por cima das janelas** | Ligado, a barra flutua sobre os programas abertos. Desligado (padrão), ela vive na área de trabalho e as janelas passam por cima dela |
 
 Se você travar a barra fora da tela, ligar **Manter na área de trabalho** traz ela
 de volta.
+
+Por padrão a barra **mora na área de trabalho**: fica na frente do papel de parede
+e atrás dos programas. Abrir ou maximizar uma janela cobre a barra, e ela reaparece
+quando a área de trabalho aparece. Ligue **Ficar por cima das janelas** para ela
+ficar sempre à vista, sobre tudo. Durante um arraste ela vai para a frente de
+propósito — é onde você precisa ver para escolher o lugar — e volta para a camada
+escolhida assim que você solta.
 
 ### 10 texturas procedurais
 
@@ -171,7 +179,6 @@ precisar desligar o efeito.
 ### Mais
 
 - Cor do fundo, dos traços e da divisória (no tema Personalizado)
-- Mostrar em todas as áreas de trabalho
 - Pasta de trabalho do OpenCode
 - Pasta de ícones
 

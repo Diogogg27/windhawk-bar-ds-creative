@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.4.1
+// @version         1.4.2
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -19,6 +19,10 @@ programas, as ações do sistema e o controle de mídia em uma linha só. Traço
 finos, ícones originais extraídos do seu próprio PC e nenhum emoji.
 
 A barra fica onde você deixar e volta para o mesmo lugar depois de reiniciar.
+
+Por padrão ela mora na área de trabalho: fica na frente do papel de parede e atrás
+dos programas abertos. Nas configurações, **Ficar por cima das janelas** deixa ela
+sempre à vista, sobre tudo.
 
 ## O que ela faz
 
@@ -138,8 +142,9 @@ https://github.com/Diogogg27/windhawk-bar-ds-creative
 - CorDivisoria: "#FFFFFF"
   $name: Cor da linha divisória (só no tema Personalizado)
   $description: Escreva no formato #RRGGBB.
-- MostrarSempreVisivel: true
-  $name: Mostrar em todas as áreas de trabalho
+- MostrarSempreVisivel: false
+  $name: Ficar por cima das janelas
+  $description: Ligado, a barra flutua por cima de tudo, sempre visível. Desligado (padrão), ela vive na área de trabalho e as janelas abertas passam por cima dela.
 - Vertical: false
   $name: Barra em pé
   $description: Em vez de deitada, a barra fica em pé na vertical.
@@ -258,9 +263,41 @@ static int       g_opacidade  = 72;
 static bool      g_forcar100  = false;
 static bool      g_starfield  = false;
 static COLORREF  g_corDiv     = RGB(255, 255, 255);
-static bool      g_todasAreas = true;
+// Camada da barra: true = por cima de tudo (fica visível sobre os programas
+// abertos), false = na área de trabalho (as janelas passam por cima dela).
+static bool      g_porCima    = false;
 static std::wstring g_pastaOpenCode = L"H:\\DS CREATIVE";
 static std::wstring g_pastaIcones;
+
+// ---------------------------------------------------------------------------
+// Camada da barra
+// ---------------------------------------------------------------------------
+
+// Põe a barra na camada escolhida pela configuração "Ficar por cima das
+// janelas". Com ela ligada, a barra é sempre a última da pilha (como era até a
+// 1.4.1). Desligada, a barra sai da faixa "sempre no topo" e vai para trás da
+// janela que está em uso — vira parte da área de trabalho, e qualquer programa
+// aberto passa por cima dela.
+//
+// De propósito não uso HWND_BOTTOM: ele manda a janela para trás de tudo,
+// inclusive do papel de parede, e a barra sumiria da tela.
+static void AplicarCamada(HWND hwnd) {
+    if (!hwnd) return;
+
+    if (g_porCima) {
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        return;
+    }
+
+    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+    HWND frente = GetForegroundWindow();
+    if (frente && frente != hwnd)
+        SetWindowPos(hwnd, frente, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
 
 // GDI+
 static ULONG_PTR g_gdiplusToken = 0;
@@ -465,7 +502,10 @@ static void CarregarConfig() {
     g_corDiv   = LerCor(L"CorDivisoria", L"#FFFFFF");
     g_tema     = Clamp(Wh_GetIntSetting(L"Tema", 1), 0, (int)_countof(kTemas) - 1);
     AplicarTema();
-    g_todasAreas = Wh_GetIntSetting(L"MostrarSempreVisivel", 1) != 0;
+    // "Ficar por cima das janelas": desligado, a barra vive na área de trabalho.
+    // Salvar a configuração já reaplica a camada na hora, sem recarregar nada.
+    g_porCima = Wh_GetIntSetting(L"MostrarSempreVisivel", 0) != 0;
+    if (g_hwnd) AplicarCamada(g_hwnd);
 
     // ---- posição -----------------------------------------------------------
     g_vertical     = Wh_GetIntSetting(L"Vertical", 0) != 0;
@@ -2067,8 +2107,9 @@ static void PosicionarBarra() {
     // estar dentro da tela, não importa o que estava salvo nem o tamanho novo
     if (g_manterNaArea) PrenderNaArea(x, y);
 
-    SetWindowPos(g_hwnd, HWND_TOPMOST, x, y, g_barW, g_barH,
+    SetWindowPos(g_hwnd, HWND_TOP, x, y, g_barW, g_barH,
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    AplicarCamada(g_hwnd);   // devolve a barra para a camada configurada
     Compor(g_hwnd, g_barW, g_barH, false);
 }
 
@@ -2114,6 +2155,9 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             g_arrastando = true;
             if (g_panel) FecharPainel();   // o painel não acompanha o arraste
         }
+        // Durante o arraste a barra vai para o topo de propósito: é onde ela
+        // precisa estar para o dono escolher o lugar. Ao soltar, o tratamento
+        // do WM_LBUTTONUP devolve ela para a camada configurada.
         if (g_arrastando)
             SetWindowPos(hwnd, HWND_TOPMOST,
                          g_origemJanela.x + dx, g_origemJanela.y + dy, 0, 0,
@@ -2135,9 +2179,10 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             ColarNaBorda(nx, ny);                  // encosta, se soltou perto
             if (g_manterNaArea) PrenderNaArea(nx, ny);
             if (nx != r.left || ny != r.top)
-                SetWindowPos(hwnd, HWND_TOPMOST, nx, ny, 0, 0,
+                SetWindowPos(hwnd, HWND_TOP, nx, ny, 0, 0,
                              SWP_NOSIZE | SWP_NOACTIVATE);
             SalvarPosicao(nx, ny);
+            AplicarCamada(hwnd);   // solta a barra de volta na camada dela
         } else if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
             if (b->onClick) b->onClick();
         }
@@ -2208,9 +2253,16 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SetTimer(hwnd, IDT_HOVER, quer, nullptr);
         }
 
-        // garante que a barra continue por cima
-        if (g_todasAreas && (GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0)
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        // mantém a barra na camada escolhida: por cima de tudo quando o "Ficar
+        // por cima das janelas" está ligado, e fora do topo quando está
+        // desligado (outro programa pode devolver o topo por conta própria)
+        if (g_porCima) {
+            if ((GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0)
+                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        } else if ((GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0) {
+            AplicarCamada(hwnd);
+        }
 
         break;
     }
@@ -2289,7 +2341,7 @@ static DWORD WINAPI ThreadPrincipal(LPVOID) {
     wc.lpszClassName = kClassePainel;
     RegisterClassExW(&wc);
 
-    g_hwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
+    g_hwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE,
                              kClasseBarra, L"Floating Launcher Bar", WS_POPUP,
                              0, 0, g_barW, g_barH,
                              nullptr, nullptr, g_hInst, nullptr);
@@ -2307,7 +2359,7 @@ static DWORD WINAPI ThreadPrincipal(LPVOID) {
             MonteBarra();
             MontePainel();
             if (g_panel) FecharPainel();
-            SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, g_barW, g_barH,
+            SetWindowPos(g_hwnd, HWND_TOP, 0, 0, g_barW, g_barH,
                          SWP_NOMOVE | SWP_NOACTIVATE);
             PosicionarBarra();
             continue;
