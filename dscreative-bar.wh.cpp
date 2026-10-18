@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.5.0
+// @version         1.5.1
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -2067,6 +2067,7 @@ static POINT PontoMouse(HWND hwnd) {
 
 // estado do arraste manual da barra
 static bool  g_arrastando = false;
+static bool  g_temAperto  = false;   // o aperto começou em nós e ainda não soltou
 static POINT g_origemMouse{};
 static POINT g_origemJanela{};
 
@@ -2224,6 +2225,7 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_LBUTTONDOWN: {
         SetCapture(hwnd);
         g_arrastando = false;
+        g_temAperto  = true;
         GetCursorPos(&g_origemMouse);
         RECT r{};
         GetWindowRect(hwnd, &r);
@@ -2240,7 +2242,7 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     case WM_MOUSEMOVE: {
         if (GetCapture() != hwnd) break;
-        if (g_travado) return 0;   // travar no lugar: o clique continua de pé
+        if (g_travado) return 0;   // travar no lugar: não move (o clique só vale se soltar onde apertou)
         POINT agora{};
         GetCursorPos(&agora);
         int dx = agora.x - g_origemMouse.x;
@@ -2261,8 +2263,10 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
 
     case WM_LBUTTONUP: {
-        bool arrastou = g_arrastando;
+        bool arrastou  = g_arrastando;
+        bool temAperto = g_temAperto;
         g_arrastando = false;
+        g_temAperto  = false;
         g_idxPressionado = -1;
         if (GetCapture() == hwnd) ReleaseCapture();
         // usa o ponto do PRÓPRIO evento, não a posição do cursor agora
@@ -2278,14 +2282,30 @@ static LRESULT CALLBACK BarraProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                              SWP_NOSIZE | SWP_NOACTIVATE);
             SalvarPosicao(nx, ny);
             AplicarCamada(hwnd);   // solta a barra de volta na camada dela
-        } else if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
-            if (b->onClick) b->onClick();
+        } else {
+            // Clique de verdade = soltou perto de onde apertou. Se o cursor
+            // andou mais de 4px, o gesto era uma tentativa de arraste — com
+            // "Travar no lugar" ligado o arraste não move nada, e sem esta
+            // checagem o soltar virava clique no botão que estivesse embaixo
+            // do cursor (abria um programa sem querer no meio do suposto
+            // arraste).
+            POINT agora{};
+            GetCursorPos(&agora);
+            bool mexeu = temAperto &&
+                (agora.x - g_origemMouse.x > 4 || agora.x - g_origemMouse.x < -4 ||
+                 agora.y - g_origemMouse.y > 4 || agora.y - g_origemMouse.y < -4);
+            if (!mexeu) {
+                if (Button* b = BotaoMaisProximo(g_buttons, pt)) {
+                    if (b->onClick) b->onClick();
+                }
+            }
         }
         return 0;
     }
 
     case WM_CAPTURECHANGED:
         g_arrastando = false;
+        g_temAperto  = false;
         g_idxPressionado = -1;
         return 0;
 
@@ -2480,7 +2500,33 @@ static DWORD WINAPI ThreadPrincipal(LPVOID) {
 // inicializada (a barra simplesmente não aparece).
 //
 // Basta `__declspec(dllexport)`: isso garante a exportação e mantém o mangling.
+// A casca do Windows (o explorer.exe dono da Área de Trabalho) é o ÚNICO
+// processo que constrói a barra. O Windhawk injeta este mod em todo
+// explorer.exe — inclusive nos processos auxiliares que hospedam janelas de
+// pasta (`explorer.exe /factory,{...} -Embedding`). Cada um desses processos
+// criava uma segunda barra idêntica, empilhada exatamente no mesmo pixel:
+// invisível enquanto paradas, e "duplicando" quando a de cima era arrastada —
+// a de baixo ficava parada no lugar. Agora só a casca cria a barra; os
+// auxiliares carregam o mod e ficam quietos.
+static bool ProcessoDaCasca() {
+    HWND casca = GetShellWindow();
+    if (!casca) return true;   // sem janela de referência: deixa criar
+    DWORD pid = 0;
+    GetWindowThreadProcessId(casca, &pid);
+    return pid == GetCurrentProcessId();
+}
+
 __declspec(dllexport) BOOL Wh_ModInit() {
+    if (!ProcessoDaCasca()) {
+        // Processo auxiliar — ou a casca nova nascendo enquanto a antiga
+        // termina de morrer. Espera um instante curto antes de decidir.
+        Sleep(1500);
+        if (!ProcessoDaCasca()) {
+            Marcar(L"Explorer auxiliar: mod ativo, sem barra (ok)");
+            return TRUE;
+        }
+    }
+
     Gdiplus::GdiplusStartupInput gsi;
     if (Gdiplus::GdiplusStartup(&g_gdiplusToken, &gsi, nullptr) != Gdiplus::Ok)
         g_gdiplusToken = 0;
@@ -2492,6 +2538,7 @@ __declspec(dllexport) BOOL Wh_ModInit() {
 
     g_thread = CreateThread(nullptr, 0, ThreadPrincipal, nullptr, 0, &g_threadId);
     if (!g_thread) return FALSE;
+    Marcar(L"Barra criada na casca do Windows");
     return TRUE;
 }
 
@@ -2518,6 +2565,7 @@ __declspec(dllexport) void Wh_ModUninit() {
 }
 
 __declspec(dllexport) void Wh_ModSettingsChanged() {
+    if (!g_thread && !g_threadId) return;   // auxiliar: não há barra para atualizar
     if (g_threadId) PostThreadMessageW(g_threadId, WM_RECARGAR, 0, 0);
     else { CarregarConfig(); CarregarIcones(); MonteBarra(); MontePainel(); }
 }
