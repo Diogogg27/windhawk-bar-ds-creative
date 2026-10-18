@@ -27,8 +27,7 @@ em grupos por linhas de 1px:
 |---|---|
 | **OpenCode** | Abre o Windows Terminal na sua pasta de projeto e retoma a última sessão |
 | **Adobe** | Um botão só — o Creative Cloud abre um painel com Photoshop, Illustrator, After Effects, Premiere e Lightroom |
-| **Favoritos** | Navegadores, mensageiros e ferramentas do dia a dia |
-| **Meus atalhos** | Até 8 programas seus. O grupo só aparece quando você preenche algum |
+| **Atalhos** | Os programas do dia a dia — uma lista que você edita nas configurações, até 32 itens |
 | **Sistema** | Esvaziar lixeira, bloquear, desligar |
 | **Mídia** | Anterior, tocar/pausar, próxima — funciona com qualquer player |
 
@@ -109,24 +108,41 @@ De **70% a 150%**, em sete degraus. Muda tudo junto — botões, ícones, cantos
 espaçamentos e a área de clique. Os ícones de traço fino são desenhados de novo
 no tamanho certo, então não ficam borrados.
 
-### Atalhos personalizados
+### Atalhos de programas
 
-Até **8 programas seus**. Em cada campo, escreva:
-
-```
-Nome | C:\Caminho\do\programa.exe
-```
-
-O terceiro campo é opcional e diz de onde tirar o ícone, quando o `.exe` não tem
-um bom:
+Os programas da barra são **uma lista editável** nas configurações — os dez que
+já vêm prontos e os que você acrescentar. Cada item é um atalho em três campos
+separados por `|`:
 
 ```
-Nome | C:\Caminho\programa.exe | C:\Outro\icone.exe
+Nome | Alvo | Ícone
 ```
 
-Se você escrever **só o caminho**, o nome sai do próprio arquivo. E o ícone é
-**extraído do programa de verdade** — nada de ícone desenhado. Se a extração
-falhar, aparece um marcador de contorno fino, para o botão nunca ficar invisível.
+O **Alvo** aceita o que o Windows abre: programa (`.exe`), pasta, documento ou
+site. Com argumentos, o programa vai entre aspas — é assim que o Maple Bookmarks
+abre os seus favoritos salvos numa janela do Comet:
+
+```
+Maple Bookmarks | "C:\Program Files\Perplexity\Comet\Application\comet.exe" --app="chrome-extension://..." | maple
+```
+
+Apps da Microsoft Store entram pelo atalho do Windows:
+
+```
+WhatsApp | shell:AppsFolder\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App | whatsapp
+```
+
+O **Ícone** é opcional: o nome de um PNG da pasta de ícones (`chrome`, `maple`,
+`telegram`…) ou um arquivo de onde tirar o ícone. Em branco, o ícone é
+**extraído do próprio alvo** — nada de ícone desenhado. Se a extração falhar,
+aparece um marcador de contorno fino, para o botão nunca ficar invisível.
+
+Na tela de configurações, o **+** acrescenta um atalho e a lixeira tira. Um item
+começando com `//` fica desligado sem precisar ser apagado:
+
+```
+// Telegram | D:\Telegram Desktop\Telegram.exe | telegram
+```
 
 ### Posição
 
@@ -244,8 +260,8 @@ O script:
   internos, como a letra do Photoshop e o telefone do WhatsApp
 - Gera `icons\` e `icons\b64.txt`
 
-Os **atalhos personalizados** não passam por esse script: o mod lê o ícone direto
-do arquivo que você apontar.
+Os **atalhos de programas** não passam por esse script: o ícone sai do PNG que
+você indicar na lista ou, sem ele, do próprio alvo do atalho.
 
 ---
 
@@ -264,7 +280,8 @@ do arquivo que você apontar.
 
 - **Caminhos com versão no nome** (Figma, WhatsApp) são resolvidos em runtime;
   se o programa sumir, o botão não acha
-- **Maple Bookmarks** é extensão de navegador — o botão abre a página da loja
+- **Maple Bookmarks** abre os favoritos numa janela do Comet — a extensão é do
+  Comet, então sem ele a janela não abre
 - **Desligar** pede confirmação, e o Windows mostra aviso de UAC
 - **Manter na área de trabalho** com o **colar nas bordas** desligado é a única
   combinação que deixa a barra sair da tela. É de propósito: é o que permite

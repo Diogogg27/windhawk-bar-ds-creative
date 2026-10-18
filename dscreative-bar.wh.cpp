@@ -2,7 +2,7 @@
 // @id              dscreative-bar
 // @name            Floating Launcher Bar
 // @description     Barra de lançamento minimalista e de flutuação livre, deitada ou em pé. Temas de cor, escala ajustável, atalhos com ícones originais, texturas procedurais e controle de opacidade.
-// @version         1.4.2
+// @version         1.5.0
 // @author          diogo
 // @github          https://github.com/Diogogg27/windhawk-bar-ds-creative
 // @homepage        https://github.com/Diogogg27/windhawk-bar-ds-creative
@@ -33,7 +33,7 @@ sempre à vista, sobre tudo.
 - 10 texturas procedurais, desenhadas em código — nenhum arquivo de imagem
 - Opacidade de 10% a 100% só no fundo: os ícones ficam sempre nítidos
 - Arraste para qualquer lugar, cole nas bordas, trave no lugar, mantenha na área
-- Até 8 atalhos seus, com o ícone extraído do próprio programa
+- Lista de atalhos de programas, editável, com o ícone extraído do próprio programa
 - Painel do Creative Cloud, esvaziar lixeira, bloquear, desligar e mídia
 
 ## O efeito magnético
@@ -45,6 +45,26 @@ continua caindo onde sempre caiu.
 
 Três ajustes controlam: liga/desliga, **Força** (0 a 200%, 100 = 1,5 vez) e
 **Alcance** (20 a 500 pixels).
+
+## Atalhos de programas
+
+O grupo **Atalhos de programas** das configurações é uma lista: cada item é um
+atalho no formato
+
+    Nome | Alvo | Ícone
+
+O **alvo** pode ser um `.exe`, uma pasta, um documento, um site ou um programa
+com argumentos entre aspas — como no Maple Bookmarks, que abre os seus favoritos
+salvos numa janela do Comet:
+
+    "C:\Program Files\Perplexity\Comet\Application\comet.exe" --app="chrome-extension://..."
+
+O **ícone** é opcional: o nome de um PNG da pasta de ícones (`chrome`, `maple`,
+`telegram`…) ou um arquivo de onde tirar o ícone. Em branco, o ícone é extraído
+do próprio alvo.
+
+O botão **+** acrescenta um atalho e a lixeira tira. Um item começando com `//`
+fica desligado sem precisar ser apagado.
 
 ## Ícones
 
@@ -95,30 +115,33 @@ https://github.com/Diogogg27/windhawk-bar-ds-creative
   - 115: 115%
   - 130: 130%
   - 150: 150%
-- Atalho1: ""
-  $name: Atalho 1 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho2: ""
-  $name: Atalho 2 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho3: ""
-  $name: Atalho 3 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho4: ""
-  $name: Atalho 4 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho5: ""
-  $name: Atalho 5 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho6: ""
-  $name: Atalho 6 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho7: ""
-  $name: Atalho 7 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
-- Atalho8: ""
-  $name: Atalho 8 - nome | caminho
-  $description: Blender | D:\Programas\Blender\blender.exe
+- Atalhos:
+  - 'Comet | C:\Program Files\Perplexity\Comet\Application\comet.exe | comet'
+  - 'Chrome | C:\Program Files\Google\Chrome\Application\chrome.exe | chrome'
+  - 'Telegram | D:\Telegram Desktop\Telegram.exe | telegram'
+  - 'WhatsApp | shell:AppsFolder\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App | whatsapp'
+  - 'NeverWrite | C:\Program Files\NeverWrite\NeverWrite.exe | neverwrite'
+  - 'Design Arena | C:\Program Files\Design Arena\pake-designarena.exe | arena'
+  - 'OneCommander | C:\Program Files\OneCommander\OneCommander.exe | onecommander'
+  - 'alphaXiv | https://www.alphaxiv.org/ | alphaxiv'
+  - 'Maple Bookmarks | "C:\Program Files\Perplexity\Comet\Application\comet.exe" --app="chrome-extension://lgncmpklmepncbjpiebhdoejhmbcnjad/popup.html" --window-size=420,620 | maple'
+  - 'Bloco de notas | C:\Windows\System32\notepad.exe | notepad'
+  $name: Atalhos de programas
+  $description: |-
+    Um item por atalho, no formato:   Nome | Alvo | Ícone
+
+    Alvo — o programa (.exe), uma pasta, um documento, um site, ou um programa
+    com argumentos entre aspas:
+
+        "C:\...\comet.exe" --app="chrome-extension://..."
+
+    Ícone (opcional) — o nome de um PNG da pasta de ícones (comet, chrome,
+    telegram, whatsapp, neverwrite, arena, onecommander, alphaxiv, maple,
+    notepad) ou um arquivo de onde tirar o ícone. Em branco, o ícone sai do
+    próprio alvo.
+
+    Use o + para acrescentar um atalho e a lixeira para tirar. Um item começando
+    com // fica desligado sem precisar ser apagado.
 - Tema: 1
   $name: Tema de cores
   $description: Escolha Personalizado para usar as três cores soltas de baixo.
@@ -316,15 +339,40 @@ static int  g_forcaIma     = 100;     // 100 = o ícone sob o cursor cresce 1,5 
 static int  g_distIma      = 150;     // alcance em px, medido no tamanho 100%
 static bool g_manterNaArea = true;    // nunca fica fora da tela
 
-// atalho cadastrado pelo usuário, no formato "Nome | Caminho". O caminho pode
-// ser um .exe, uma pasta, um documento ou um site. Um terceiro campo opcional
-// diz de qual arquivo tirar o ícone, quando o alvo não tem um.
+// atalho de programa, vindo da lista das configurações, no formato
+//     Nome | Alvo | Ícone
+// O alvo pode ser um .exe, uma pasta, um documento, um site ou um programa com
+// argumentos entre aspas:
+//     "C:\...\comet.exe" --app="chrome-extension://..."
+// O ícone é opcional: o nome de um PNG da pasta de ícones (ex. maple) ou um
+// arquivo de onde tirar o ícone. Em branco, o ícone sai do próprio alvo.
 struct AtalhoUser {
     std::wstring nome;
     std::wstring alvo;
-    std::wstring iconeDe;
+    std::wstring icone;
 };
 static std::vector<AtalhoUser> g_atalhos;
+
+// teto da lista: mais que isso não caberia em nenhum monitor
+static const int kMaxAtalhos = 32;
+
+// Lista de fábrica: vale enquanto nenhum atalho foi salvo nas configurações.
+// É a barra como ela sai da caixa — e a mesma lista que aparece no primeiro
+// salvamento, para o que está instalado e o que está escrito nunca divergirem.
+static const wchar_t* kAtalhosPadrao[] = {
+    L"Comet | C:\\Program Files\\Perplexity\\Comet\\Application\\comet.exe | comet",
+    L"Chrome | C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe | chrome",
+    L"Telegram | D:\\Telegram Desktop\\Telegram.exe | telegram",
+    L"WhatsApp | shell:AppsFolder\\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App | whatsapp",
+    L"NeverWrite | C:\\Program Files\\NeverWrite\\NeverWrite.exe | neverwrite",
+    L"Design Arena | C:\\Program Files\\Design Arena\\pake-designarena.exe | arena",
+    L"OneCommander | C:\\Program Files\\OneCommander\\OneCommander.exe | onecommander",
+    L"alphaXiv | https://www.alphaxiv.org/ | alphaxiv",
+    L"Maple Bookmarks | \"C:\\Program Files\\Perplexity\\Comet\\Application\\comet.exe\""
+    L" --app=\"chrome-extension://lgncmpklmepncbjpiebhdoejhmbcnjad/popup.html\""
+    L" --window-size=420,620 | maple",
+    L"Bloco de notas | C:\\Windows\\System32\\notepad.exe | notepad",
+};
 static Gdiplus::Bitmap* g_texture = nullptr;
 static int g_textureId = -1;
 static UINT g_textureW = 0, g_textureH = 0;
@@ -408,6 +456,63 @@ static std::wstring Aparar(const std::wstring& s) {
     while (i < f && EspacoW(s[i])) i++;
     while (f > i && EspacoW(s[f - 1])) f--;
     return s.substr(i, f - i);
+}
+
+// Separa o alvo em programa + argumentos, na convenção do Windows: o programa
+// entre aspas e o resto solto atrás.
+//     "C:\...\comet.exe" --app="chrome-extension://..."
+// Sem aspas o alvo inteiro é o programa — assim caminho com espaço continua
+// valendo sem precisar de aspas, e site/pasta/documento seguem iguais.
+static void SepararAlvo(const std::wstring& alvo, std::wstring& prog, std::wstring& args) {
+    prog.clear();
+    args.clear();
+    std::wstring t = Aparar(alvo);
+    if (t.empty()) return;
+
+    if (t[0] == L'"' || t[0] == L'\'') {
+        wchar_t fecha = (t[0] == L'"') ? L'"' : L'\'';
+        size_t f = t.find(fecha, 1);
+        if (f != std::wstring::npos) {
+            prog = Aparar(t.substr(1, f - 1));
+            args = Aparar(t.substr(f + 1));
+            return;
+        }
+    }
+    prog = t;
+}
+
+// Quebra um item da lista de atalhos em nome, alvo e ícone. O separador é o |
+// e o terceiro campo é opcional; sem nenhum | o alvo é o próprio item e o nome
+// sai do arquivo apontado.
+static AtalhoUser InterpretarAtalho(const std::wstring& texto) {
+    std::wstring campo[3];
+    int qual = 0;
+    bool temBarra = false;
+    for (wchar_t c : texto) {
+        if (c == L'|') { temBarra = true; if (qual < 2) qual++; continue; }
+        campo[qual] += c;
+    }
+    for (int k = 0; k < 3; k++) campo[k] = Aparar(campo[k]);
+
+    AtalhoUser a;
+    if (!temBarra) {
+        a.alvo = campo[0];
+        if (a.alvo.rfind(L"http", 0) == 0) {
+            a.nome = a.alvo;                        // site: o nome é o endereço
+        } else {
+            std::wstring prog, args;
+            SepararAlvo(a.alvo, prog, args);
+            size_t barra = prog.find_last_of(L"\\/");
+            a.nome = (barra == std::wstring::npos) ? prog : prog.substr(barra + 1);
+            size_t ponto = a.nome.find_last_of(L'.');
+            if (ponto != std::wstring::npos) a.nome = a.nome.substr(0, ponto);
+        }
+    } else {
+        a.nome  = campo[0];
+        a.alvo  = campo[1];
+        a.icone = campo[2];
+    }
+    return a;
 }
 
 // ---------------------------------------------------------------------------
@@ -528,43 +633,29 @@ static void CarregarConfig() {
     g_pastaIcones = Expandir((s && *s) ? s : L"%USERPROFILE%\\windhawk-bar-ds-creative\\icons");
     Wh_FreeStringSetting(s);
 
-    // ---- atalhos do usuário ------------------------------------------------
-    // Formato: Nome | Caminho  (o terceiro campo é opcional e diz de onde
-    // tirar o ícone). Se só houver um campo, ele é o caminho e o nome sai do
-    // próprio arquivo. Assim funciona tanto "Blender | D:\...\blender.exe"
-    // quanto só "D:\...\blender.exe".
+    // ---- atalhos de programas ----------------------------------------------
+    // Uma lista só, editável nas configurações: Atalhos[0], Atalhos[1], ...
+    // Cada item é um atalho no formato  Nome | Alvo | Ícone, com o ícone
+    // opcional. Um item começando com // fica desligado sem ser apagado.
     g_atalhos.clear();
-    for (int i = 1; i <= 8; i++) {
-        wchar_t chave[24]{};
-        wsprintfW(chave, L"Atalho%d", i);
+    for (int i = 0; i < kMaxAtalhos; i++) {
+        wchar_t chave[32]{};
+        wsprintfW(chave, L"Atalhos[%d]", i);
         PCWSTR v = Wh_GetStringSetting(chave);
-        std::wstring texto = (v && *v) ? v : L"";
+        std::wstring texto = Aparar((v && *v) ? v : L"");
         Wh_FreeStringSetting(v);
-        if (texto.empty()) continue;
+        if (texto.empty() || texto.rfind(L"//", 0) == 0) continue;
 
-        std::wstring campo[3];
-        int qual = 0;
-        for (wchar_t c : texto) {
-            if (c == L'|') { if (qual < 2) qual++; continue; }
-            campo[qual] += c;
-        }
-        for (int k = 0; k < 3; k++) campo[k] = Aparar(campo[k]);
-
-        AtalhoUser a;
-        if (campo[1].empty()) {
-            a.alvo = Expandir(campo[0]);
-            size_t barra = a.alvo.find_last_of(L"\\/");
-            a.nome = (barra == std::wstring::npos) ? a.alvo : a.alvo.substr(barra + 1);
-            size_t ponto = a.nome.find_last_of(L'.');
-            if (ponto != std::wstring::npos) a.nome = a.nome.substr(0, ponto);
-        } else {
-            a.nome    = campo[0];
-            a.alvo    = Expandir(campo[1]);
-            a.iconeDe = Expandir(campo[2]);
-        }
-        if (a.alvo.empty()) continue;
+        AtalhoUser a = InterpretarAtalho(texto);
+        if (a.alvo.empty() || a.alvo.rfind(L"//", 0) == 0) continue;
         g_atalhos.push_back(a);
     }
+
+    // Nada salvo ainda (primeira execução do mod): entra a lista de fábrica,
+    // para a barra já nascer completa.
+    if (g_atalhos.empty())
+        for (const wchar_t* linha : kAtalhosPadrao)
+            g_atalhos.push_back(InterpretarAtalho(linha));
 }
 
 // ---------------------------------------------------------------------------
@@ -694,24 +785,45 @@ static void LiberarIcones() {
 static void CarregarIcones() {
     LiberarIcones();
 
-    // ícones dos atalhos do usuário primeiro: como saem do próprio arquivo
-    // apontado, funcionam mesmo sem nenhuma pasta de ícones configurada
+    // Ícones dos atalhos de programa. A ordem de preferência é:
+    //   1. o PNG indicado no terceiro campo   (maple -> maple.png)
+    //   2. o arquivo indicado no terceiro campo
+    //   3. o próprio alvo do atalho
+    // Como os dois últimos saem do próprio arquivo, um atalho continua
+    // funcionando mesmo sem nenhuma pasta de ícones configurada.
     for (size_t i = 0; i < g_atalhos.size(); i++) {
         wchar_t chave[24]{};
         wsprintfW(chave, L"user%u", (unsigned)i);
         const AtalhoUser& a = g_atalhos[i];
-        const std::wstring& de = a.iconeDe.empty() ? a.alvo : a.iconeDe;
-        if (GetFileAttributesW(de.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        const std::wstring icone = Expandir(a.icone);
+
+        if (!icone.empty() && !g_pastaIcones.empty()) {
+            std::wstring png = g_pastaIcones + L"\\" + icone + L".png";
+            if (GetFileAttributesW(png.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(png.c_str(), FALSE);
+                if (bmp && bmp->GetLastStatus() == Gdiplus::Ok) { g_icons[chave] = bmp; continue; }
+                delete bmp;
+            }
+        }
+
+        std::wstring de;
+        if (!icone.empty() && GetFileAttributesW(icone.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            de = icone;
+        } else {
+            std::wstring prog, args;
+            SepararAlvo(Expandir(a.alvo), prog, args);
+            if (GetFileAttributesW(prog.c_str()) != INVALID_FILE_ATTRIBUTES) de = prog;
+        }
+        if (de.empty()) continue;
         if (Gdiplus::Bitmap* b = CarregarIconeDoArquivo(de))
             g_icons[chave] = b;
     }
 
     if (g_pastaIcones.empty()) return;
 
+    // ícones dos botões internos: OpenCode, Creative Cloud, Figma e o painel
     static const wchar_t* chaves[] = {
-        L"oc", L"cc", L"fg", L"comet", L"chrome", L"telegram", L"whatsapp",
-        L"neverwrite", L"arena", L"onecommander", L"alphaxiv", L"maple",
-        L"notepad", L"ps", L"ai", L"ae", L"pr", L"lr",
+        L"oc", L"cc", L"fg", L"ps", L"ai", L"ae", L"pr", L"lr",
     };
 
     for (const wchar_t* k : chaves) {
@@ -866,6 +978,23 @@ static void AbrirShell(const std::wstring& alvo,
                   SW_SHOWNORMAL);
 }
 
+// Executa um atalho da lista: programa, pasta, documento, site ou programa com
+// argumentos. "shell:..." é atalho do próprio Windows (os apps da Store usam
+// shell:AppsFolder) e vai pelo explorer, do mesmo jeito que o Windows faria.
+static void AbrirAtalho(const std::wstring& alvo) {
+    std::wstring t = Aparar(Expandir(alvo));
+    if (t.empty()) return;
+
+    if (t.rfind(L"shell:", 0) == 0) {
+        AbrirShell(Expandir(L"%WINDIR%\\explorer.exe"), t);
+        return;
+    }
+
+    std::wstring prog, args;
+    SepararAlvo(t, prog, args);
+    AbrirShell(prog, args);
+}
+
 // Varre "raiz\padrao" e devolve "raiz\<pasta mais recente>\<relativo>".
 // Necessário porque Figma e WhatsApp guardam a versão no nome da pasta.
 static std::wstring MaisRecente(const std::wstring& raiz,
@@ -901,18 +1030,6 @@ static void AbrirFigma() {
         exe = Expandir(L"%LOCALAPPDATA%\\Figma\\Figma.exe");
     }
     AbrirShell(exe);
-}
-
-static void AbrirWhatsApp() {
-    // App User Model ID: o Windows lança o app da Store por ele, sem depender
-    // de caminho de arquivo. A pasta WindowsApps é ilegível para usuário comum,
-    // então procurar o .exe por varredura falharia — e o alias da Store nem
-    // sempre existe.
-    const wchar_t* aumid = L"5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App";
-
-    std::wstring args = L"shell:AppsFolder\\";
-    args += aumid;
-    AbrirShell(Expandir(L"%WINDIR%\\explorer.exe"), args);
 }
 
 static void AbrirOpenCode() {
@@ -1221,42 +1338,21 @@ static void MonteBarra() {
     AddIcon(g_buttons, L"cc", [] { AbrirPainel(); }, BK_ADOBE);
     AddIcon(g_buttons, L"fg", [] { AbrirFigma(); });
 
-    // --- C: favoritos ---
-    size_t c0 = g_buttons.size();
-    AddIcon(g_buttons, L"comet", [] {
-        AbrirShell(L"C:\\Program Files\\Perplexity\\Comet\\Application\\comet.exe"); });
-    AddIcon(g_buttons, L"chrome", [] {
-        AbrirShell(L"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"); });
-    AddIcon(g_buttons, L"telegram", [] {
-        AbrirShell(L"D:\\Telegram Desktop\\Telegram.exe"); });
-    AddIcon(g_buttons, L"whatsapp", [] { AbrirWhatsApp(); });
-    AddIcon(g_buttons, L"neverwrite", [] {
-        AbrirShell(L"C:\\Program Files\\NeverWrite\\NeverWrite.exe"); });
-    AddIcon(g_buttons, L"arena", [] {
-        AbrirShell(L"C:\\Program Files\\Design Arena\\pake-designarena.exe"); });
-    AddIcon(g_buttons, L"onecommander", [] {
-        AbrirShell(L"C:\\Program Files\\OneCommander\\OneCommander.exe"); });
-    AddIcon(g_buttons, L"alphaxiv", [] {
-        AbrirShell(L"https://www.alphaxiv.org/"); });
-    AddIcon(g_buttons, L"maple", [] {
-        AbrirShell(L"https://chromewebstore.google.com/detail/lgncmpklmepncbjpiebhdoejhmbcnjad"); });
-    AddIcon(g_buttons, L"notepad", [] {
-        AbrirShell(L"C:\\Windows\\System32\\notepad.exe"); });
-
-    // --- C2: atalhos do usuário ---
+    // --- C: atalhos de programas (a lista das configurações) ---
     // Se o ícone real foi extraído, usa ele. Se não, cai num traço fino de
     // "abrir" — melhor um botão discreto do que um botão invisível.
-    size_t c1 = g_buttons.size();
+    size_t c0 = g_buttons.size();
     for (size_t i = 0; i < g_atalhos.size(); i++) {
         wchar_t chave[24]{};
         wsprintfW(chave, L"user%u", (unsigned)i);
-        const std::wstring alvo = g_atalhos[i].alvo;
+        const std::wstring alvo   = g_atalhos[i].alvo;
+        const std::wstring rotulo = L"Atalho: " + g_atalhos[i].nome;
         if (g_icons.find(chave) != g_icons.end())
-            AddIcon(g_buttons, chave, [alvo] { AbrirShell(alvo); });
+            AddIcon(g_buttons, chave, [alvo, rotulo] { Marcar(rotulo.c_str()); AbrirAtalho(alvo); });
         else
-            AddLine(g_buttons, LI_USER, [alvo] { AbrirShell(alvo); });
+            AddLine(g_buttons, LI_USER, [alvo, rotulo] { Marcar(rotulo.c_str()); AbrirAtalho(alvo); });
     }
-    size_t c2 = g_buttons.size();
+    size_t c1 = g_buttons.size();
 
     // --- D: sistema ---
     size_t d0 = g_buttons.size();
@@ -1274,8 +1370,7 @@ static void MonteBarra() {
 
     g_grupos.push_back({ L"OpenCode", a0, b0 });
     g_grupos.push_back({ L"Adobe",    b0, c0 });
-    g_grupos.push_back({ L"Favoritos", c0, c1 });
-    if (c2 > c1) g_grupos.push_back({ L"Meus atalhos", c1, c2 });
+    if (c1 > c0) g_grupos.push_back({ L"Atalhos", c0, c1 });
     g_grupos.push_back({ L"Sistema",  d0, e0 });
     g_grupos.push_back({ L"Mídia",    e0, fim });
 

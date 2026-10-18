@@ -90,7 +90,7 @@ Grupos separados por **divisórias de 1px**, altura 16px, cor configurável.
 |---|---|
 | **A** | Botão do OpenCode (o mais à esquerda) |
 | **B** | Creative Cloud (abre painel) + Figma |
-| **C** | Favoritos — 10 botões com ícone real |
+| **C** | Atalhos — a lista editável nas configurações (10 de fábrica, até 32), ícone real |
 | **D** | Sistema — lixeira, bloquear, desligar (SVG) |
 | **E** | Mídia — anterior, tocar/pausar, próxima (SVG) |
 
@@ -152,13 +152,17 @@ Todos os lançamentos usam `ShellExecuteW(NULL, L"open", exe, args, dir, SW_SHOW
 
 ### 6.1 Programas comuns
 
+Os programas da barra hoje são **uma lista editável nas configurações**, no
+formato `Nome | Alvo | Ícone`. A tabela abaixo é a **lista de fábrica** — o que
+aparece enquanto ninguém editar.
+
 | Botão | Executável |
 |---|---|
 | Figma | resolver em runtime a pasta mais recente em `%LOCALAPPDATA%\Figma\app-*\Figma.exe` |
 | Comet | `C:\Program Files\Perplexity\Comet\Application\comet.exe` |
 | Chrome | `C:\Program Files\Google\Chrome\Application\chrome.exe` |
 | Telegram | `D:\Telegram Desktop\Telegram.exe` |
-| WhatsApp | `C:\Program Files\WindowsApps\5319275A.WhatsAppDesktop_*\WhatsApp.Root.exe` |
+| WhatsApp | `shell:AppsFolder\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App` (apps da Store vão pelo explorer) |
 | NeverWrite | `C:\Program Files\NeverWrite\NeverWrite.exe` |
 | Arena AI | `C:\Program Files\Design Arena\pake-designarena.exe` |
 | OneCommander | `C:\Program Files\OneCommander\OneCommander.exe` |
@@ -168,19 +172,27 @@ Todos os lançamentos usam `ShellExecuteW(NULL, L"open", exe, args, dir, SW_SHOW
 > atualização**. O mod deve varrer `%LOCALAPPDATA%\Figma\` em cada clique e usar
 > a pasta `app-*` de maior número de versão.
 
-> **WhatsApp:** é o pacote da Microsoft Store. O caminho tem o número de versão;
-> varrer `%ProgramFiles%\WindowsApps\5319275A.WhatsAppDesktop_*\`.
+> **WhatsApp:** é o pacote da Microsoft Store. O caminho tem o número de versão e
+> a pasta é ilegível para usuário comum; o lançamento vai pelo App User Model ID,
+> com `explorer.exe shell:AppsFolder\<AUMID>`.
 
 ### 6.2 Sites
 
 | Botão | URL |
 |---|---|
 | alphaXiv | `https://www.alphaxiv.org/` |
-| Maple Bookmarks | `https://chromewebstore.google.com/detail/lgncmpklmepncbjpiebhdoejhmbcnjad` |
+| Maple Bookmarks | `chrome-extension://lgncmpklmepncbjpiebhdoejhmbcnjad/popup.html` — a extensão instalada no Comet |
 
-> **Maple Bookmarks não está instalada** em nenhum perfil do Comet, Chrome ou
-> Edge. O botão abre a página da loja, onde ela é instalada com um clique.
-> Depois de instalada, o comportamento pode ser trocado para abrir a extensão.
+> **Maple Bookmarks** é extensão do **Comet** (perfil `Default`, versão 1.18) e a
+> interface dela é o popup, que lê `chrome.bookmarks.getTree()` — os favoritos
+> salvos no navegador. O botão abre esse popup numa janela de aplicativo:
+>
+> ```
+> "C:\Program Files\Perplexity\Comet\Application\comet.exe" --app="chrome-extension://lgncmpklmepncbjpiebhdoejhmbcnjad/popup.html" --window-size=420,620
+> ```
+>
+> Antes o botão abria a página da loja, porque a extensão ainda não estava
+> instalada.
 
 ### 6.3 OpenCode
 
@@ -361,7 +373,7 @@ explorer.
 | Caminho do WhatsApp tem versão | varrer `5319275A.WhatsAppDesktop_*` |
 | `D:\` é **somente-leitura** para o usuário | nenhum caminho do mod escreve no D: |
 | Usuário **não é administrador** | OpenCode sem elevação; desligamento usa privilégio elevado com confirmação |
-| Maple Bookmarks não instalada | botão abre a loja |
+| Maple Bookmarks exige o Comet | o botão abre os favoritos numa janela `--app=` do Comet |
 | Explorer reinicia e o hook some | o Windhawk reinicia o hook sozinho |
 
 ---
